@@ -1,0 +1,28 @@
+Package: ReplicationRelevance
+Type: Package
+Title: Calculates Relevance for ManyLabs Replication Projects
+Version: 0.1.0
+Author: Stefan P. Thoma
+Maintainer: Stefan P. Thoma <stefan.thoma@student.ethz.ch>
+Description: Package for my master thesis project.
+    Main use is to organize my R functions required to do the analysis.
+    Some functions are somewhat generalisable to other applications.
+License: CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)
+Encoding: UTF-8
+LazyData: true
+vignRoxygenNote: 7.1.1.9001
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Imports: 
+    readr,
+    dplyr,
+    lme4,
+    specr,
+    lattice,
+    ggplot2,
+    ggthemes
+RoxygenNote: 7.1.1.9001
