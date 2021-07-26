@@ -21,8 +21,12 @@ Imports:
     readr,
     dplyr,
     lme4,
-    specr,
     lattice,
     ggplot2,
-    ggthemes
+    ggthemes,
+    specr,
+    rlang,
+    magrittr,
+    forcats,
+    tidyselect
 RoxygenNote: 7.1.1.9001

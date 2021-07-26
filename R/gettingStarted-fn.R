@@ -49,6 +49,7 @@ swap_binary_values <- function(tb, col) {
 ##' @param name name of our study
 ##' @return data.frame containing data that is ready for analysis
 ##' @author Stefan Thoma (adapted from Lorenz Herger)
+##' @export
 
 get_data_ready <- function(dat, name){
 #dat <- dtml5
@@ -61,13 +62,13 @@ get_data_ready <- function(dat, name){
   
   # preprocess data
   if(name == "alb5"){
-    dat <- dat %>% select(-starts_with("..."))
+    dat <- dat %>% dplyr::select(-tidyselect::starts_with("..."))
     dat <- try(replace_values(table = dat, column = "Condition", old_values = c("action", "inaction"), new_values = c(1, 0)))
-    dat["Condition"] <- as_factor(dat["Condition"])
+    dat["Condition"] <- forcats::as_factor(dat["Condition"])
   }
   
   if(name=="payne"){
-    dat <- dat %>% select(-ends_with("F")) %>% 
+    dat <- dat %>% dplyr::select(-ends_with("F")) %>% 
       rename(Location = Site,
              ResponseId = subject2)
     dat <- try(replace_values(table = dat, column = "Condition", old_values = c(-1, 1), new_values = c(0, 1)))
@@ -75,7 +76,7 @@ get_data_ready <- function(dat, name){
   if(name == "lobue"){
     dat <- subset(dat, RT.correct <= 8.3 & number_errors < 8 &
                                       is.na(dat$snake_experience) == FALSE,
-                                    select=Site:number_errors)
+                                    dplyr::select=Site:number_errors)
     dat["Location"] <- plyr::revalue(x=as.factor(dat$Site), c("1"="BG", "2"="NI", "3" = "LY", "4" = "NS"))
     dat["protocol"] <- plyr::revalue(x=as.factor(dat$protocol), c("1"="NP", "2"="RP"))
   }
@@ -87,10 +88,11 @@ get_data_ready <- function(dat, name){
 
 ####################################################################################
 ##  This function takes the raw data and makes adjustments necessary for our analysis
-## This function is specifically for the ManyLabs Project
+## This function is specifically for the ManyLabs 1 Project
 ##' @param dat the data.frame containing the raw data
 ##' @return dat_clean data.frame containing data that is ready for analysis
 ##' @author Lorenz Herger
+##' @export
 
 get_data_ready_ml <- function(dat) {
   
@@ -115,7 +117,7 @@ get_data_ready_ml <- function(dat) {
   
   # Change to factors:
   tofactor <- c("scales", "scalesgroup")
-  dat[tofactor] <- as_factor(dat[tofactor])
+  dat[tofactor] <- forcats::as_factor(dat[tofactor])
   
   
   dat <- dat %>%
