@@ -12,7 +12,7 @@
 ##'        the ith entry of new:value replaces the ith entry of old_values
 ##' @return table data.frame where the values have been replaced
 ##' @author Lorenz Herger
-##' 
+##'
 replace_values <- function(table, column, old_values, new_values) {
   if (length(old_values) != length(new_values)) {
     stop("Vectors \"old_values\" and \"new_values\" are not of equal length.")
@@ -32,7 +32,7 @@ replace_values <- function(table, column, old_values, new_values) {
 ##' @param col name of the column in which values need to be swapped
 ##' @return tb data.frame where the values have been replaced
 ##' @author Lorenz Herger
-##' 
+##'
 swap_binary_values <- function(tb, col) {
   trt <- unique(tb[[col]])
   trt <- trt[!is.na(trt)]
@@ -59,28 +59,28 @@ get_data_ready <- function(dat, name){
   dat[] <- lapply(dat, as.vector)
   dat <- as.data.frame(dat)
 
-  
+
   # preprocess data
   if(name == "alb5"){
     dat <- dat %>% dplyr::select(-tidyselect::starts_with("..."))
     dat <- try(replace_values(table = dat, column = "Condition", old_values = c("action", "inaction"), new_values = c(1, 0)))
     dat["Condition"] <- forcats::as_factor(dat["Condition"])
   }
-  
+
   if(name=="payne"){
-    dat <- dat %>% dplyr::select(-ends_with("F")) %>% 
-      rename(Location = Site,
+    dat <- dat %>% dplyr::select(-ends_with("F")) %>%
+      dplyr::rename(Location = Site,
              ResponseId = subject2)
     dat <- try(replace_values(table = dat, column = "Condition", old_values = c(-1, 1), new_values = c(0, 1)))
   }
   if(name == "lobue"){
     dat <- subset(dat, RT.correct <= 8.3 & number_errors < 8 &
                                       is.na(dat$snake_experience) == FALSE,
-                                    dplyr::select=Site:number_errors)
+                  select = Site:number_errors)
     dat["Location"] <- plyr::revalue(x=as.factor(dat$Site), c("1"="BG", "2"="NI", "3" = "LY", "4" = "NS"))
     dat["protocol"] <- plyr::revalue(x=as.factor(dat$protocol), c("1"="NP", "2"="RP"))
   }
-  
+
   return(dat)
 }
 
@@ -95,32 +95,32 @@ get_data_ready <- function(dat, name){
 ##' @export
 
 get_data_ready_ml <- function(dat) {
-  
+
   # Remove SPSS-stlye attributes and classes
   dat[] <- lapply(dat, as.vector)
-  
+
   # The response variable allowedforbidden was incorrenctly encodend. Let's fix it:
   group_0 <- dat[dat$allowedforbiddenGroup == 0, ]
   dat[dat$allowedforbiddenGroup == 0, ] <- swap_binary_values(group_0, "allowedforbidden")
-  
+
   # All effects presented in the original paper were positive. For some questions we have to swap
   # the tretments (usually given as 0 and 1) in order to get the postive sign
   swap_treatments <- c("sunkgroup", "gainlossgroup", "reciprocitygroup", "allowedforbiddenGroup")
   for (i in swap_treatments) dat <- swap_binary_values(dat, i)
-  
+
   # The variable "sex" is encoded as "m" for male and "f" for female. We rencode "sex with "1" and "0"
   dat <- replace_values(dat, "sex", old_values = c("m", "f"), new_values = c(0, 1))
-  
+
   # The response variable gainlossDV is binary with levels 1 and 2. We need to replace this by
   # 0 and 1 in order to be able to fit a logistic regression model
   dat <- replace_values(dat, "gainlossDV", old = c(1, 2), new = c(0, 1))
-  
+
   # Change to factors:
   tofactor <- c("scales", "scalesgroup")
   dat[tofactor] <- forcats::as_factor(dat[tofactor])
-  
-  
+
+
   dat <- dat %>%
-    rename(Location = referrer,
+     dplyr::rename(Location = referrer,
            ResponseId = session_id)
 }
