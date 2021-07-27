@@ -3,7 +3,7 @@
 \name{relevance_table.study}
 \alias{relevance_table.study}
 \title{creates a table with the effectsizes of all locations for a specific
- research question. In addition, the function calculates one-sided CIs for 
+ research question. In addition, the function calculates one-sided CIs for
  the effect found by each university. Whether the effect size for a specific
  question is calculated as the standardized mean difference or as the odds
  ratio is determined in the argument "vars_for_question"}
@@ -31,7 +31,7 @@ and CIs for one research question.
 }
 \description{
 creates a table with the effectsizes of all locations for a specific
- research question. In addition, the function calculates one-sided CIs for 
+ research question. In addition, the function calculates one-sided CIs for
  the effect found by each university. Whether the effect size for a specific
  question is calculated as the standardized mean difference or as the odds
  ratio is determined in the argument "vars_for_question"

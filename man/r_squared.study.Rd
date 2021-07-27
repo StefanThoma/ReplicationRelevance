@@ -2,7 +2,7 @@
 % Please edit documentation in R/2_study-fn.R
 \name{r_squared.study}
 \alias{r_squared.study}
-\title{We want to get the conditional R^2 with confidence interval separately for each 
+\title{We want to get the conditional R^2 with confidence interval separately for each
 lab but also for the MEMo.}
 \usage{
 r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "basic")
@@ -16,9 +16,9 @@ r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "basic")
 CI. numeric vector containing estimate and CI
 }
 \description{
-Conditional R^2 refers to: 
-Conditional R_GLMM² is interpreted as a variance explained by the entire model, 
-including both fixed and random effects, 
+Conditional R^2 refers to:
+Conditional R_GLMM² is interpreted as a variance explained by the entire model,
+including both fixed and random effects,
 and is calculated according to the equation:
 R_GLMM(c)² = (σ_f² + σ_α²) / (σ_f² + σ_α² + σ_ε²)
 }

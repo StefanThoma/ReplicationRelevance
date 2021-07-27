@@ -2,9 +2,9 @@
 % Please edit documentation in R/2_study-fn.R
 \name{effect_differences.study}
 \alias{effect_differences.study}
-\title{WIP 
+\title{WIP
 Calculates two difference tables with two distinct methods to calculate CI.
-wald: Uses pooled SD to create normal CI 
+wald: Uses pooled SD to create normal CI
 newcombe: Uses newcombe method to create CI}
 \usage{
 effect_differences.study(object, coverage_prob = 0.95, standardise = NULL)
@@ -15,13 +15,13 @@ effect_differences.study(object, coverage_prob = 0.95, standardise = NULL)
 \item{coverage_prob}{Double. Coverage probability of the CIs. Defaults to .95}
 }
 \value{
-CI. numeric vector containing the difference in effect sizes and the 
+CI. numeric vector containing the difference in effect sizes and the
 lower and upper boundaries of a confidence interval for this difference.
 }
 \description{
-WIP 
+WIP
 Calculates two difference tables with two distinct methods to calculate CI.
-wald: Uses pooled SD to create normal CI 
+wald: Uses pooled SD to create normal CI
 newcombe: Uses newcombe method to create CI
 }
 \author{

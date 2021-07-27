@@ -15,9 +15,146 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
-
+# Setup
 ```{r setup}
-library(ReplicationRelevance)
+pacman::p_load(ReplicationRelevance, relevance)
 devtools::load_all()
-ReplicationRelevance::dtml5
 ```
+
+In this document I will present the Analysis for the Master Thesis Project step by step. 
+The data has already been cleaned and prepared for analysis.
+
+## Global parameters
+```{r}
+digitsForRounding <- 3
+```
+This could be solved a bit more elegantly.
+
+
+# Analysis
+
+## ManyLabs 1
+
+### scales
+Seemingly artificially dichotomised study.
+Original effect size constructed from table of original study.
+```{r}
+scales.original <- data.frame(
+  tv = as.factor(c(rep(0, 57), rep(1, 11), rep(0, 40), rep(1, 24))),
+  category = as.factor(c(rep(0, 68), rep(1, 64)))
+)
+
+# table(scales.original) looks correct (like in the original paper)
+scales.original.glm <- glm(formula = tv~category, data = scales.original, family="binomial", )
+```
+
+Here I load the data from the package.
+```{r}
+data(ml1, package = "ReplicationRelevance")
+```
+
+
+
+Now I manually create a study object as defined in the file `study-obj.R`
+
+```{r, include = FALSE}
+scales <- new("study", 
+            name = "scales", 
+            manyLabs = "ml1",
+            data.replication = ml1,
+            original = c(inference(scales.original.glm)["category1",], "n.total" = nobs(scales.original.glm)), 
+            variables = list(dv = "scales", iv = "scalesgroup", measure = "OR"),
+            var.of.interest = "scalesgroup",
+            relevance.threshold = .1,
+            family = "binomial"
+            )
+scales@mixedModels <- MixedModels.study(scales)
+diagnosticPlot.study(scales)
+scales@table <- (relevance_table.study(scales, mem = TRUE))
+
+plot_estimates.study(scales, cutoff = 1)
+```
+Die "Slope" Varianz ist relativ gross, erklärt 28,4% der Varianz. Can I say that? 
+Diagnostics plot does not look super nice! But not sure how it is supposed to look, so I have to check that out.
+
+
+## ManyLabs 5
+
+### Replications of Albarracin Study 5 (2008)
+
+<https://osf.io/a9hk2/> Chartier, Brumbaugh, Garinther & 3 more
+[@albarracin2008]
+
+First, we load the data
+
+```{r}
+data(dtml5, package = "ReplicationRelevance")
+data(dtmturk, package = "ReplicationRelevance")
+```
+
+Create study object for Albarracin Study 5:
+
+```{r}
+alb5 <- new("study", 
+  name = "alb5", 
+  manyLabs = "ml5",
+  data.revised = dtml5, 
+  data.replication = dtmturk,
+  original = list(m.1 = 12.83, m.2 = 10.78, sd.1 = 1.86, sd.2 = 3.15, n.1 = 18, n.2 = 18), 
+  variables = list("dv" = "SATTotal", "iv" = "Condition", "measure" = "SMD"),
+  var.of.interest = "Condition",
+  relevance.threshold = .1,
+  family = "gaussian"
+)
+
+summary(alb5)
+```
+
+```{r}
+
+
+alb5@mixedModels <- MixedModels.study(alb5)
+diagnosticPlot.study(alb5)
+alb5@table <- relevance_table.study(alb5)
+
+# does not work yet
+alb5@difference.table <- effect_differences.study(alb5)
+
+plot_estimates.study(alb5)
+plot_difference.study(alb5, ci.type = "newcombe")
+plot_difference.study(alb5, ci.type = "wald")
+
+```
+
+
+# LoBue 
+
+```{r}
+data(lobue.dat, "ReplicationRelevance")
+```
+
+```{r}
+lobue <-  new("study", 
+            name = "lobue", 
+            manyLabs = "ml5",
+            data.replication = subset(lobue.dat, protocol == "RP"),
+            data.revised = subset(lobue.dat, protocol == "NP"),
+            #original = c(inference(scales.original.glm)["category1",], "n.total" = nobs(scales.original.glm)), 
+            variables = list(dv = "RT.correct", iv = "target_stimulus*child_parent*snake_experience", measure = "drop"),
+            var.of.interest = "child_parent*snake_experience",
+            relevance.threshold = .1,
+            family = "gaussian"
+            )
+#object <- lobue
+```
+
+| Lobue and Deloache (2008) reported a significant main effect for target stimulus with a sizeable effect size (η2 = .23), meaning 23% of the variance in reaction time could be explained as a function of which condition participants were in.  Our effect size for the main effect of condition was η2 = .032, or only 3.2% of the variance in reaction time could be explained as a function of participant condition. 
+```{r, message = FALSE, warning = FALSE}
+lobue@table <- relevance_table.study(lobue)
+
+plot_estimates.study(lobue)
+```
+for the drop effect, we need to supply the final predictors and the comparisons predictor.
+Then we compare the R^2 of the models. 
+
+Seems kinda way too large effects.. will see.

@@ -10,7 +10,7 @@ plot_estimates.study(object, cutoff = NULL, standardise = TRUE)
 \item{object}{a study object}
 
 \item{coverage_probability}{Double. Coverage probability of the CIs. Defaults
-to .95 
+to .95
 
 
 TODO: change measure}

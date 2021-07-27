@@ -2,7 +2,7 @@
 % Please edit documentation in R/2_study-fn.R
 \name{summary.study}
 \alias{summary.study}
-\title{summary.study, function to summarise the data frames of the study objects. 
+\title{summary.study, function to summarise the data frames of the study objects.
 result depends on the measure OR or SMD defined in the study object.}
 \usage{
 summary.study(object)
@@ -14,7 +14,7 @@ summary.study(object)
 some summary measures of the data, mainly about the data
 }
 \description{
-summary.study, function to summarise the data frames of the study objects. 
+summary.study, function to summarise the data frames of the study objects.
 result depends on the measure OR or SMD defined in the study object.
 }
 \author{

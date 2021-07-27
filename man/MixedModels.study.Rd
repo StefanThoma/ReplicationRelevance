@@ -9,7 +9,7 @@ MixedModels.study(object, methodFamily = NULL, transformation = NULL)
 \arguments{
 \item{object}{takes an object of class study as input}
 
-\item{methodFamily}{which family does the error distribution belong to? 
+\item{methodFamily}{which family does the error distribution belong to?
 not required, can be used to overwrite the default defined in the object.}
 
 \item{transformation}{name of the transformation that should be applied to the response (e.g. log).}
