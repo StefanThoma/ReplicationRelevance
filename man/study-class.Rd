@@ -3,6 +3,7 @@
 \docType{class}
 \name{study-class}
 \alias{study-class}
+\alias{study}
 \title{An S4 class to represent a bank account.}
 \description{
 An S4 class to represent a bank account.

@@ -18,7 +18,9 @@ knitr::opts_chunk$set(
 # Setup
 ```{r setup}
 pacman::p_load(ReplicationRelevance, relevance)
-devtools::load_all()
+library(ReplicationRelevance)
+devtools::document()
+ 
 ```
 
 In this document I will present the Analysis for the Master Thesis Project step by step. 
@@ -57,19 +59,29 @@ data(ml1, package = "ReplicationRelevance")
 
 Now I manually create a study object as defined in the file `study-obj.R`
 
-```{r, include = FALSE}
+
+```{r, include = TRUE}
 scales <- new("study", 
-            name = "scales", 
-            manyLabs = "ml1",
-            data.replication = ml1,
-            original = c(inference(scales.original.glm)["category1",], "n.total" = nobs(scales.original.glm)), 
-            variables = list(dv = "scales", iv = "scalesgroup", measure = "OR"),
-            var.of.interest = "scalesgroup",
-            relevance.threshold = .1,
-            family = "binomial"
+            name = "scales", # name of the study
+            manyLabs = "ml1", # which replication project it belongs to
+            data.replication = ml1, # data of the replication
+            original = c(inference(scales.original.glm)["category1",],
+                         "n.total" = nobs(scales.original.glm)), # summary of the original study
+            variables = list(dv = "scales",
+                             iv = "scalesgroup",
+                             measure = "OR"), # certain information to build the models
+            var.of.interest = "scalesgroup", # variable of interest
+            relevance.threshold = .1, # study specific effect size threshold
+            family = "binomial" # distribution family of the model
             )
+
+
 scales@mixedModels <- MixedModels.study(scales)
 diagnosticPlot.study(scales)
+```
+
+
+```{r, include = TRUE}
 scales@table <- (relevance_table.study(scales, mem = TRUE))
 
 plot_estimates.study(scales, cutoff = 1)

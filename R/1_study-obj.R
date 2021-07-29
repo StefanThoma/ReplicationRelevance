@@ -1,4 +1,4 @@
-
+# study -------------------------------
 #' An S4 class to represent a bank account.
 #'
 #' @slot name Name of study in question
@@ -7,20 +7,22 @@
 #' @slot data.replication Data generated with replication protocol (ML1 & ML5)
 #' @slot original Parameter of the original study. Best to use output of relevance::inference function and numer ob observations
 #' @slot variables X, Y, and type of Measure (OR, SMD or Drop1)
-#' @slot var.of.interest Depends on the Measure. Usually just one predictorn. 
+#' @slot var.of.interest Depends on the Measure. Usually just one predictorn.
 #' @slot relevance.threshold Supply study specific relevance threshold
 #' @slot family Model family forwarded to glm and glmer
 #' @slot mixedModels Here you save the output of the MixedModels.study function
 #' @slot table Here you save the output of the relevance_table.study function
 #' @slot difference.table Here you save the output of the effect_differences.study function
+#' @export
 
-setClass("study", 
+
+study <- setClass("study",
          slots = list(
-           name = "character", 
+           name = "character",
            manyLabs = "character",
-           data.revised = "data.frame", 
+           data.revised = "data.frame",
            data.replication = "data.frame",
-           original = "list", 
+           original = "list",
            variables = "list",
            var.of.interest = "character",
            relevance.threshold = "numeric",
@@ -30,3 +32,5 @@ setClass("study",
            difference.table = "list"
          )
 )
+
+
