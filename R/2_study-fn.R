@@ -456,7 +456,7 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 
 
   # if we want non-standardised effect sizes, we just replace the standardised ones.
-  if(standardise){
+  if(!standardise){
     table <- table %>% dplyr::mutate(
       stciLow = ciLow,
       stciUp = ciUp,
@@ -558,6 +558,11 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
 ##' @return plot of studies
 ##' @author Stefan Thoma, adapted from Federico Rogai
 plot.table.study <- function(ggtable, category, threshold){
+
+  ## define colors for all possible success possibilities:
+  cls <- RColorBrewer::brewer.pal(6, "Set2")
+  sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl" =  cls[4], "Ctr" =  cls[5])
+
   ggplot2::ggplot(data=ggtable, ggplot2::aes(y=as.numeric(Location), x=stcoef, xmin=stciLow, xmax=stciUp, col = category))+
 
     #this adds the effect sizes to the plot
@@ -588,7 +593,8 @@ plot.table.study <- function(ggtable, category, threshold){
 
     ggplot2::theme_minimal()+
     ggplot2::theme(text=ggplot2::element_text(family="Times",size=18, color="black"))+
-    ggplot2::theme(panel.spacing = ggplot2::unit(1, "lines"))
+    ggplot2::theme(panel.spacing = ggplot2::unit(1, "lines")) +
+    ggplot2::scale_color_manual(values = sccs)
 }
 
 
@@ -959,11 +965,11 @@ stnd.beta.glmer <- function(mod) {
 ##' @returns vector indicating whether repl. has been successful or not.
 ##' @author Stefan Thoma
 ##'
-success <- function(table, threshold = NULL){
+ysuccess <- function(table, threshold = NULL){
 
   if(is.null(threshold)){
 
-    vec <- with(table, ifelse(Rls>1, "Rlv",
+    vec <- with(table, ifelse(Rls>1, y"Rlv",
                               ifelse(stciLow>0 & Rlp>1, "Amb.Sig",
                                      ifelse(stciLow<0 & Rlp>1, "Amb",
                                             ifelse(stciLow<0 & Rlp<1, "Ngl",
@@ -1045,3 +1051,42 @@ power.f <- function(x, std.effect, threshold, family ){
 #           function(l) power.f(x = as.vector(subset(dat, subset = Location == l)[[treatment_var]]),
 #                               std.effect = output$stcoef[1], threshold = .1, family = family)))
 #
+
+
+
+
+##  plot both ------------------------------------------------------------
+##' This function plots the relevance_overview_table and the difference table
+##' @param object a study object
+##' @param standardize should plot be based on standardized values.
+##' @param coverage_probability Double. Coverage probability of the CIs. Defaults
+##' @param cutoff.est is forwarded as cutoff for estimate_plot function
+##' @param cutoff.diff is forwarded as cutoff for difference_plot function
+##' to .95
+##'
+# @returns ggplot object
+##' @author Stefan Thoma
+##' @export
+plot_both.study <- function(object, standardise = FALSE, coverage_probability = .95, cutoff.est = NULL, cutoff.diff = NULL){
+  measure = object@variables$measure
+
+
+  if(measure=="SMD"){
+    diff.type <- "wald"
+  } else if(measure == "OR"){
+    diff.type <- "newcombe"
+  } else{stop("function not defined for such measure not defined")}
+
+
+  # adjust difference table of object:
+  object@difference.table[[diff.type]] <- rbind(NA, object@difference.table[[diff.type]])
+
+  est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
+    ggplot2::theme(legend.position = "none")
+  diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = TRUE) +
+    ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
+
+  est.plot + diff.plot +
+    patchwork::plot_annotation(tag_levels = 'A')
+
+}

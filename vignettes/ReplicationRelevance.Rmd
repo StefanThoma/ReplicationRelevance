@@ -17,9 +17,10 @@ knitr::opts_chunk$set(
 ```
 # Setup
 ```{r setup}
-pacman::p_load(ReplicationRelevance, relevance)
-library(ReplicationRelevance)
+#pacman::p_load(ReplicationRelevance, relevance)
+#library(ReplicationRelevance)
 devtools::document()
+devtools::load_all()
  
 ```
 
@@ -85,6 +86,8 @@ diagnosticPlot.study(scales)
 scales@table <- (relevance_table.study(scales, mem = TRUE))
 
 plot_estimates.study(scales, cutoff = 1)
+
+plot_difference.study(scales)
 ```
 Die "Slope" Varianz ist relativ gross, erklärt 28,4% der Varianz. Can I say that? 
 Diagnostics plot does not look super nice! But not sure how it is supposed to look, so I have to check that out.
@@ -135,7 +138,7 @@ alb5@difference.table <- effect_differences.study(alb5)
 plot_estimates.study(alb5)
 plot_difference.study(alb5, ci.type = "newcombe")
 plot_difference.study(alb5, ci.type = "wald")
-
+plot_both.study(alb5)
 ```
 
 
