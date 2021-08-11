@@ -393,6 +393,7 @@ relevance_table.study <- function(object,
 ##' @param percent used to avoid overplotting in Tukey-Anscombe plot.
 ##' @return Tukey-Anscombe plot, Q-Q plot for RE and residuals' Q-Q plot.
 ##' @author Stefan Thoma, adapted from Federico Rogai
+##' @export
 diagnosticPlot.study<-function(object, percent = 1){
 
   if(!{percent> 0 & percent<=1}) stop("percentage has to be between 0 and 1")
