@@ -17,10 +17,10 @@ knitr::opts_chunk$set(
 ```
 # Setup
 ```{r setup}
-#pacman::p_load(ReplicationRelevance, relevance)
-#library(ReplicationRelevance)
-devtools::document()
-devtools::load_all()
+pacman::p_load(relevance)
+library(ReplicationRelevance)
+#devtools::document()
+#devtools::load_all()
  
 ```
 
@@ -53,7 +53,7 @@ scales.original.glm <- glm(formula = tv~category, data = scales.original, family
 
 Here I load the data from the package.
 ```{r}
-data(ml1, package = "ReplicationRelevance")
+data(scales, package = "ReplicationRelevance")
 ```
 
 
@@ -62,10 +62,10 @@ Now I manually create a study object as defined in the file `study-obj.R`
 
 
 ```{r, include = TRUE}
-scales <- new("study", 
+scales.study <- new("study", 
             name = "scales", # name of the study
             manyLabs = "ml1", # which replication project it belongs to
-            data.replication = ml1, # data of the replication
+            data.replication = as.data.frame(scales), # data of the replication
             original = c(inference(scales.original.glm)["category1",],
                          "n.total" = nobs(scales.original.glm)), # summary of the original study
             variables = list(dv = "scales",
@@ -77,17 +77,20 @@ scales <- new("study",
             )
 
 
-scales@mixedModels <- MixedModels.study(scales)
-diagnosticPlot.study(scales)
+scales.study@mixedModels <- MixedModels.study(scales.study)
+diagnosticPlot.study(scales.study)
 ```
 
 
 ```{r, include = TRUE}
-scales@table <- (relevance_table.study(scales, mem = TRUE))
+scales.study@table <- relevance_table.study(scales.study, mem = TRUE)
+scales.study@difference.table <- ReplicationRelevance::effect_differences.study(scales.study)
+plot_estimates.study(scales.study, cutoff = 5)
 
-plot_estimates.study(scales, cutoff = 1)
+plot_difference.study(scales.study, cutoff = 5)
 
-plot_difference.study(scales)
+plot_both.study(scales.study, cutoff.diff = 5, cutoff.est = 5)
+
 ```
 Die "Slope" Varianz ist relativ gross, erklärt 28,4% der Varianz. Can I say that? 
 Diagnostics plot does not look super nice! But not sure how it is supposed to look, so I have to check that out.
@@ -103,8 +106,8 @@ Diagnostics plot does not look super nice! But not sure how it is supposed to lo
 First, we load the data
 
 ```{r}
-data(dtml5, package = "ReplicationRelevance")
-data(dtmturk, package = "ReplicationRelevance")
+data(alb5_rep, package = "ReplicationRelevance")
+data(alb5_rev, package = "ReplicationRelevance")
 ```
 
 Create study object for Albarracin Study 5:
@@ -113,8 +116,8 @@ Create study object for Albarracin Study 5:
 alb5 <- new("study", 
   name = "alb5", 
   manyLabs = "ml5",
-  data.revised = dtml5, 
-  data.replication = dtmturk,
+  data.revised = as.data.frame(alb5_rev), 
+  data.replication = as.data.frame(alb5_rep),
   original = list(m.1 = 12.83, m.2 = 10.78, sd.1 = 1.86, sd.2 = 3.15, n.1 = 18, n.2 = 18), 
   variables = list("dv" = "SATTotal", "iv" = "Condition", "measure" = "SMD"),
   var.of.interest = "Condition",
@@ -129,47 +132,53 @@ summary(alb5)
 
 
 alb5@mixedModels <- MixedModels.study(alb5)
-diagnosticPlot.study(alb5)
+#diagnosticPlot.study(alb5)
 alb5@table <- relevance_table.study(alb5)
 
-# does not work yet
+
 alb5@difference.table <- effect_differences.study(alb5, standardise = TRUE)
 
 plot_estimates.study(alb5)
 plot_difference.study(alb5, ci.type = "newcombe")
 plot_difference.study(alb5, ci.type = "wald")
 plot_both.study(alb5)
+
+
 ```
 
 
 # LoBue 
 
 ```{r}
-data(lobue.dat, "ReplicationRelevance")
+data(lobue, package = "ReplicationRelevance")
 ```
 
 ```{r}
-lobue <-  new("study", 
+lobue.study <-  new("study", 
             name = "lobue", 
             manyLabs = "ml5",
-            data.replication = subset(lobue.dat, protocol == "RP"),
-            data.revised = subset(lobue.dat, protocol == "NP"),
+            data.replication = as.data.frame(subset(lobue, protocol == "RP")),
+            data.revised = as.data.frame(subset(lobue, protocol == "NP")),
             #original = c(inference(scales.original.glm)["category1",], "n.total" = nobs(scales.original.glm)), 
             variables = list(dv = "RT.correct", iv = "target_stimulus*child_parent*snake_experience", measure = "drop"),
             var.of.interest = "child_parent*snake_experience",
             relevance.threshold = .1,
             family = "gaussian"
             )
-#object <- lobue
+
 ```
 
 | Lobue and Deloache (2008) reported a significant main effect for target stimulus with a sizeable effect size (η2 = .23), meaning 23% of the variance in reaction time could be explained as a function of which condition participants were in.  Our effect size for the main effect of condition was η2 = .032, or only 3.2% of the variance in reaction time could be explained as a function of participant condition. 
 ```{r, message = FALSE, warning = FALSE}
-lobue@table <- relevance_table.study(lobue)
+lobue.study@table <- relevance_table.study(lobue.study)
 
-plot_estimates.study(lobue)
+plot_estimates.study(lobue.study) 
+
 ```
 for the drop effect, we need to supply the final predictors and the comparisons predictor.
 Then we compare the R^2 of the models. 
 
-Seems kinda way too large effects.. will see.
+I used bootstrapped normal CI around the bias corrected R^2 estimate, while I plotted the observed R^2.
+Hence, the CI does not look symmetrical around the observed R^2. 
+
+Obviously, the original effect is still missing. Needs to be added ASAP!

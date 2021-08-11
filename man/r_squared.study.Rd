@@ -5,7 +5,7 @@
 \title{We want to get the conditional R^2 with confidence interval separately for each
 lab but also for the MEMo.}
 \usage{
-r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "basic")
+r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "norm")
 }
 \arguments{
 \item{object}{Study object.}

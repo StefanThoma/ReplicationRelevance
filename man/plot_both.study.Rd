@@ -6,7 +6,7 @@
 \usage{
 plot_both.study(
   object,
-  standardise = FALSE,
+  standardise = TRUE,
   coverage_probability = 0.95,
   cutoff.est = NULL,
   cutoff.diff = NULL

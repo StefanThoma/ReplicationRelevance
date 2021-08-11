@@ -277,6 +277,8 @@ LRT.study <-function(object){
 ##' and CIs for one research question.
 ##' @author Stefan Thoma, adapted from Lorenz Herger
 ##' @export
+##'
+
 relevance_table.study <- function(object,
                                         coverage_prob = .95,
                                         mem = TRUE,
@@ -432,13 +434,14 @@ diagnosticPlot.study<-function(object, percent = 1){
 # and CIs for one research question.
 ##' @author Stefan Thoma
 ##' @export
+
 plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
   if(!is.null(cutoff) & length(cutoff)==1){cutoff <- c(-cutoff, cutoff)}
   if(rlang::is_empty(object@table)){
     warning("the object does not contain the table. The function mixedModels.study is called and results are used")
       object@table <- relevance_table.study(object)}
 
-  if(object@variables$measure == "OR"){
+  if(object@variables$measure %in% c("OR", "drop")){
     standardise <- FALSE
   }
 
@@ -452,19 +455,19 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 # lower_bounds <- as.vector(table[, "stciLow"])
 # upper_bounds <- as.vector(table[, "stciUp"])
 
-  # Get category of effects
-  category <- success(table, threshold = object@relevance.threshold)
-
 
   # if we want non-standardised effect sizes, we just replace the standardised ones.
   if(!standardise){
     table <- table %>% dplyr::mutate(
-      stciLow = ciLow,
-      stciUp = ciUp,
-      stcoef = estimate
+      stciLow = as.numeric(ciLow),
+      stciUp = as.numeric(ciUp),
+      stcoef = as.numeric(estimate)
     )
   }
 
+  # Get category of effects
+
+  category <- success(table, threshold = object@relevance.threshold)
 
   xname <- object@name
 
@@ -523,9 +526,9 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
   # The same if we do not standardise!
   if(!"stcoef" %in% names(table) | !standardise){
     table <- table %>% dplyr::mutate(
-      stciLow = ciLow,
-      stciUp = ciUp,
-      stcoef = estimate
+      stciLow = as.numeric(ciLow),
+      stciUp = as.numeric(ciUp),
+      stcoef = as.numeric(estimate)
     )
   }
 
@@ -568,12 +571,14 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
 ##' @param category the categorisation of the results for color choice
 ##' @return plot of studies
 ##' @author Stefan Thoma, adapted from Federico Rogai
+
 plot.table.study <- function(ggtable, category, threshold){
 
   ## define colors for all possible success possibilities:
   cls <- RColorBrewer::brewer.pal(6, "Set1")
   sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl" =  cls[4], "Ctr" =  cls[5])
 
+  #as.numeric(ggtable$stciLow)<as.numeric(ggtable$stcoef)
   ggplot2::ggplot(data=ggtable, ggplot2::aes(y=as.numeric(Location), x=stcoef, xmin=stciLow, xmax=stciUp, col = category))+
 
     #this adds the effect sizes to the plot
@@ -844,7 +849,7 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
 ##' @param coverage_prob double.
 ##' @returns CI. numeric vector containing estimate and CI
 ##' @author Stefan Thoma
-r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basic"){
+r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm"){
   # prepare formulas as string
   vars <- object@variables
   formula1 <- paste(vars$dv, "~", vars$iv)
@@ -867,6 +872,8 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basi
     m2 <- glm(as.formula(formula2), data = dat2, family = object@family)
     #MuMIn::r.squaredGLMM(m1, m2)[1,"R2c"]
     attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
+
+
   }
 
   ## now for MEMo
@@ -886,7 +893,7 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basi
 
         boot_o <- boot::boot(data = x, statistic = stat.f.lm, R = 1000)
         boot_ci <- boot::boot.ci(boot_o, conf = coverage_prob, type = bootstrap.type)
-        out <- c(boot_ci$t0, sd(boot_o$t), boot_ci[[bootstrap.type]][4:5], nrow(x))
+        out <- c(boot_ci$t0, sd(boot_o$t), tail(c(boot_ci[[4]]), 2), nrow(x))
         names(out) <- names(output)[-6]
         out
       })
@@ -902,8 +909,7 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basi
     # Estimate & Bootstrap CI
     MEMo_boot <- boot::boot(data = object@data.revised, statistic = stat.f.MEMo, R = 1000)
     MEMo_boot_ci <- boot::boot.ci(MEMo_boot, conf = coverage_prob, type = bootstrap.type)
-
-    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), MEMo_boot_ci[[bootstrap.type]][4:5]), digits = digitsForRounding),
+    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
                  nrow(object@data.revised),
                  type = "fixef.rand.coef")
     out.rev <- cbind(round(for.all.labs(object@data.revised), digits = digitsForRounding),
@@ -912,7 +918,7 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basi
                      type = "replication")
 
 
-    output <- rbind(output, out.rev, out.rep, out.all)
+    output <- rbind(output, out.rev, out.rep, "All" = out.all)
   } else if(object@manyLabs == "ml1"){
     # MEmo
     # Estimate & Bootstrap CI
@@ -920,19 +926,20 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "basi
     MEMo_boot_ci <- boot::boot.ci(MEMo_boot, conf = coverage_prob, type = bootstrap.type)
 
     # create output for each type of study
-    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), MEMo_boot_ci[[bootstrap.type]][4:5]), digits = digitsForRounding),
+    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
                  nrow(object@data.revised),
                  type = "fixef.rand.coef")
     out.rep <- cbind(round(for.all.labs(object@data.replication), digits = digitsForRounding),
                      type = "replication")
 
     # one ring to bind them
-    output <- rbind(output, out.rev, out.rep, out.all)
+    output <- rbind(output, out.rev, out.rep, "All" = out.all)
   }
 
 
   return(output)
 }
+
 
 # Standardise Effects of glmer-model -------------------------------------------
 ##' Standardise Effects of glmer-model
@@ -1078,7 +1085,7 @@ power.f <- function(x, std.effect, threshold, family ){
 # @returns ggplot object
 ##' @author Stefan Thoma
 ##' @export
-plot_both.study <- function(object, standardise = FALSE, coverage_probability = .95, cutoff.est = NULL, cutoff.diff = NULL){
+plot_both.study <- function(object, standardise = TRUE, coverage_probability = .95, cutoff.est = NULL, cutoff.diff = NULL){
 
   measure = object@variables$measure
 
@@ -1111,7 +1118,7 @@ plot_both.study <- function(object, standardise = FALSE, coverage_probability = 
 
   est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
     ggplot2::theme(legend.position = "right")
-  diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = TRUE) +
+  diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
     ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
 
   (est.plot | diff.plot ) +
