@@ -133,7 +133,7 @@ diagnosticPlot.study(alb5)
 alb5@table <- relevance_table.study(alb5)
 
 # does not work yet
-alb5@difference.table <- effect_differences.study(alb5)
+alb5@difference.table <- effect_differences.study(alb5, standardise = TRUE)
 
 plot_estimates.study(alb5)
 plot_difference.study(alb5, ci.type = "newcombe")

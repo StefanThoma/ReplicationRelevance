@@ -474,11 +474,13 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 
   #setting up the basic plot
   if(is.null(cutoff)){
-    plot.table.study(ggtable, category = category, threshold = object@relevance.threshold)
+    plot.table.study(ggtable, category = category, threshold = object@relevance.threshold)+
+      ggplot2::xlab(expression(theta))
   #  ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
   } else {
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
-    ggplot2::coord_cartesian(xlim =cutoff)
+    ggplot2::coord_cartesian(xlim =cutoff) +
+    ggplot2::xlab(expression(theta))
    # ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
   }
 
@@ -495,10 +497,13 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 ##' @author Stefan Thoma
 ##' @export
 plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", standardise = TRUE){
+#object <- alb5
+  # Deal with the cutoff for plotting: If only one is supplied, apply it to both sides.
   if(!is.null(cutoff) & length(cutoff) == 1){cutoff <- c(-cutoff, cutoff)}
   if(rlang::is_empty(object@difference.table)){
     warning("the object does not contain the table. The function mixedModels.study is called and results are used")
-    object@difference.table <- effect_differences.study(object)}
+    object@difference.table <- effect_differences.study(object)
+    }
 
 
   if(object@variables$measure=="OR"){
@@ -506,15 +511,16 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
   }
 
 
-
+# Extract infomration
   table <- object@difference.table[[ci.type]]
-
+# Filter out unwanted rows
   table <- table[ !(row.names(table) %in% "Original1"), ]
-
+# Get names of locations
   lab <- rownames(table)
 
   # if no stcoef in names, then just use non-std-values
-  if(!"stcoef" %in% names(table) | standardise){
+  # The same if we do not standardise!
+  if(!"stcoef" %in% names(table) | !standardise){
     table <- table %>% dplyr::mutate(
       stciLow = ciLow,
       stciUp = ciUp,
@@ -541,11 +547,15 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
 
   #setting up the basic plot
   if(is.null(cutoff)){
-    plot.table.study(ggtable, category = category, threshold = object@relevance.threshold)
-     # ggtitle(paste("Effect differences of study ", xname, " of project ", object@manyLabs, sep = ""))
+    plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
+    ggplot2::geom_vline(xintercept = -object@relevance.threshold, alpha = .3, col = "red") +
+    # ggtitle(paste("Effect differences of study ", xname, " of project ", object@manyLabs, sep = "")) +
+    ggplot2::xlab(expression(Delta))
   } else {
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
-      ggplot2::coord_cartesian(xlim =cutoff)
+    ggplot2::coord_cartesian(xlim =cutoff) +
+    ggplot2::geom_vline(xintercept = -object@relevance.threshold, alpha = .3, col = "red")+
+    ggplot2::xlab(expression(Delta))
      # ggtitle(paste("Effect differences of study ", xname, " of project ", object@manyLabs, sep = ""))
   }
 
@@ -560,7 +570,7 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
 plot.table.study <- function(ggtable, category, threshold){
 
   ## define colors for all possible success possibilities:
-  cls <- RColorBrewer::brewer.pal(6, "Set2")
+  cls <- RColorBrewer::brewer.pal(6, "Set1")
   sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl" =  cls[4], "Ctr" =  cls[5])
 
   ggplot2::ggplot(data=ggtable, ggplot2::aes(y=as.numeric(Location), x=stcoef, xmin=stciLow, xmax=stciUp, col = category))+
@@ -965,11 +975,11 @@ stnd.beta.glmer <- function(mod) {
 ##' @returns vector indicating whether repl. has been successful or not.
 ##' @author Stefan Thoma
 ##'
-ysuccess <- function(table, threshold = NULL){
+success <- function(table, threshold = NULL){
 
   if(is.null(threshold)){
 
-    vec <- with(table, ifelse(Rls>1, y"Rlv",
+    vec <- with(table, ifelse(Rls>1, "Rlv",
                               ifelse(stciLow>0 & Rlp>1, "Amb.Sig",
                                      ifelse(stciLow<0 & Rlp>1, "Amb",
                                             ifelse(stciLow<0 & Rlp<1, "Ngl",
@@ -1068,9 +1078,10 @@ power.f <- function(x, std.effect, threshold, family ){
 ##' @author Stefan Thoma
 ##' @export
 plot_both.study <- function(object, standardise = FALSE, coverage_probability = .95, cutoff.est = NULL, cutoff.diff = NULL){
+
   measure = object@variables$measure
 
-
+ # Decide which difference table to use
   if(measure=="SMD"){
     diff.type <- "wald"
   } else if(measure == "OR"){
@@ -1081,12 +1092,31 @@ plot_both.study <- function(object, standardise = FALSE, coverage_probability = 
   # adjust difference table of object:
   object@difference.table[[diff.type]] <- rbind(NA, object@difference.table[[diff.type]])
 
+#est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
+#  ggplot2::theme(legend.position = "none")
+#diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = TRUE) +
+#  ggplot2::theme(legend.position = "none", axis.text.y = ggplot2::element_blank())
+
+#lgnd.pbr <- ggpubr::get_legend(diff.plot + ggplot2::theme(legend.position = "bottom"))
+#lgnd <- ggpubr::as_ggplot(lgnd.pbr)
+
+#(est.plot + diff.plot ) /
+#        lgnd  +
+#  patchwork::plot_layout(heights = c(8, 1), guides = collect) +
+#  patchwork::plot_annotation(tag_levels = 'A')
+#
+
+
+
   est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
-    ggplot2::theme(legend.position = "none")
+    ggplot2::theme(legend.position = "right")
   diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = TRUE) +
     ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
 
-  est.plot + diff.plot +
+  (est.plot | diff.plot ) +
+    patchwork::plot_layout(guides = "collect") +
     patchwork::plot_annotation(tag_levels = 'A')
 
+
 }
+
