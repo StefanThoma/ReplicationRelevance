@@ -4,9 +4,9 @@
 \name{study-class}
 \alias{study-class}
 \alias{study}
-\title{An S4 class to represent a bank account.}
+\title{An S4 class to represent a many-labs replication study.}
 \description{
-An S4 class to represent a bank account.
+An S4 class to represent a many-labs replication study.
 }
 \section{Slots}{
 

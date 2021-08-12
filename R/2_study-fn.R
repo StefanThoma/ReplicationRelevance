@@ -1121,7 +1121,7 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
   diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
     ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
 
-  (est.plot | diff.plot ) +
+  (est.plot + diff.plot ) +
     patchwork::plot_layout(guides = "collect") +
     patchwork::plot_annotation(tag_levels = 'A')
 

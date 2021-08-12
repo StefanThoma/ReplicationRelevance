@@ -1,5 +1,6 @@
 # study -------------------------------
-#' An S4 class to represent a bank account.
+#' An S4 class to represent a many-labs replication study.
+#'
 #'
 #' @slot name Name of study in question
 #' @slot manyLabs From which many-labs project is the data (so far only ML1 & ML5 are supported)
