@@ -7,6 +7,7 @@ vignette: >
   %\VignetteIndexEntry{ReplicationRelevance}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteDepends{relevance} 
 ---
 
 ```{r, include = FALSE}
@@ -18,9 +19,9 @@ knitr::opts_chunk$set(
 # Setup
 ```{r setup}
 pacman::p_load(relevance)
-library(ReplicationRelevance)
+#library(ReplicationRelevance)
 #devtools::document()
-#devtools::load_all()
+devtools::load_all()
  
 ```
 
