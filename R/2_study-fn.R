@@ -131,6 +131,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   # Get name of x and y variables
   yVar<-object@variables$dv
   xVar<-object@variables$iv
+  base_iv <- paste(xVar, collapse = " + ")
 
   if(object@manyLabs=="ml5"){
     dat <- object@data.revised
@@ -148,36 +149,51 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   }
 
 
-  base_iv <- paste(xVar, collapse = " + ")
+
   sing <- FALSE
 
   if(tolower(methodFamily)!="gaussian"){
     fit.empty<-glm(formula=as.formula(paste0(yVar," ~", base_iv)), dat, family=methodFamily, na.action = na.omit)
     fit0 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1|Location)")), dat, family=methodFamily)
     fit1 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat, family=methodFamily)
+    sing <- lme4::isSingular(fit1, tol = 1e-5)
+    if(sing){
+      fit1 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
+      sing <- lme4::isSingular(fit1, tol = 1e-5)
+    }
   } else{
     fit.empty<-aov(formula=as.formula(paste0(yVar," ~", paste(base_iv, collapse = " + "))), dat, na.action=na.omit)
     fit0 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1|Location)")), dat)
-    if("sex" %in% xVar){ # We had errors at convergence: this is an ad hoc solution
-      fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat,
-                   control = lmerControl(optimizer ="Nelder_Mead"))
+    fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat)
+    sing <- lme4::isSingular(fit1, tol = 1e-5)
+    # delete intercept-slope covariance if model was singular
+    if(sing){
+      fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
+      sing <- lme4::isSingular(fit1, tol = 1e-5)
     }
-    else{fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat)
 
-    if(lme4::isSingular(fit1)){
-      fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", xVar, " + (1 | Location) + (" , xVar[1] ," - 1 | Location)")), dat)
-      sing <- lme4::isSingular(fit1)
-    }
-    }
   }
-  ## get intraclass correlation (icc)
+
+
+  # get intraclass correlation (icc)
+  icc.names <- c(names(lme4::ranef(fit1, condVar = TRUE)$Location))
   icc <- as.data.frame(specr::icc_specs(fit1))
-  if(nrow(icc) == 4){
-    icc$grp <- c("Intercept", "Slope", "Intercept.Slope.cov", "Residual")
 
-  } else if(nrow(icc) == 3){
-    icc$grp <- c("Intercept", "Slope", "Residual")
+  # Name the grp variable a bit nicer
+  # Works for most cases I think
+  if(nrow(icc) == length(icc.names)+1){
+    icc$grp <- c(icc.names, "Residual")
+
+  } else if(nrow(icc) == length(icc.names)+2){
+    icc$grp <- c(icc.names, "Covariance", "Residual")
   }
+
+  # Get Rle based on a 10% Rel. Threshold
+  icc$Rle <- icc$percent/10
+
+  # Round values
+  icc[-1] <- round(icc[-1], digits = digitsForRounding)
+
 
 
   models <- list("NullModel" = fit.empty,
@@ -1100,22 +1116,6 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
   # adjust difference table of object:
   object@difference.table[[diff.type]] <- rbind(NA, object@difference.table[[diff.type]])
 
-#est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
-#  ggplot2::theme(legend.position = "none")
-#diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = TRUE) +
-#  ggplot2::theme(legend.position = "none", axis.text.y = ggplot2::element_blank())
-
-#lgnd.pbr <- ggpubr::get_legend(diff.plot + ggplot2::theme(legend.position = "bottom"))
-#lgnd <- ggpubr::as_ggplot(lgnd.pbr)
-
-#(est.plot + diff.plot ) /
-#        lgnd  +
-#  patchwork::plot_layout(heights = c(8, 1), guides = collect) +
-#  patchwork::plot_annotation(tag_levels = 'A')
-#
-
-
-
   est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
     ggplot2::theme(legend.position = "right")
   diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
@@ -1127,4 +1127,5 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
 
 
 }
+
 

@@ -5,7 +5,7 @@
 \title{summary.study, function to summarise the data frames of the study objects.
 result depends on the measure OR or SMD defined in the study object.}
 \usage{
-summary.study(object)
+\method{summary}{study}(object)
 }
 \arguments{
 \item{object}{Object of class study}
