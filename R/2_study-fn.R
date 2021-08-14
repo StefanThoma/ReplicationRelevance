@@ -33,6 +33,7 @@ check_slot.study <- Vectorize(check_slot.study, vectorize.args = "slot", SIMPLIF
 ##' @param object Object of class study
 ##' @return some summary measures of the data, mainly about the data
 ##' @author Stefan Thoma
+##' @export
 
 summary.study <- function(object){
   if(!isClass(object, Class = "study")){
