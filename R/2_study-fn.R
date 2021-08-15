@@ -150,7 +150,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   }
 
 
-
+  message <- ""
   sing <- FALSE
 
   if(tolower(methodFamily)!="gaussian"){
@@ -159,18 +159,26 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
     fit1 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat, family=methodFamily)
     sing <- lme4::isSingular(fit1, tol = 1e-5)
     if(sing){
-      fit1 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
+      fit1 <- lme4::glmer(formula= as.formula(form <- paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat, family = methodFamily)
       sing <- lme4::isSingular(fit1, tol = 1e-5)
+      message <- paste(("complex model is singular. Alternative model was fitted: "), form)
+      if(sing){
+        fit1 <- lme4::glmer(formula=as.formula(form2 <- paste0(yVar," ~", base_iv, " + ( - 1 +" , xVar[1] ," | Location)")), dat, family = methodFamily)
+        sing <- lme4::isSingular(fit1, tol = 1e-5)
+        message <- paste("model ", form, " is singular. Alternative model was fitted: ", form2)
+      }
     }
   } else{
     fit.empty<-aov(formula=as.formula(paste0(yVar," ~", paste(base_iv, collapse = " + "))), dat, na.action=na.omit)
     fit0 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1|Location)")), dat)
-    fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat)
+    fit1 <- lme4::lmer(formula=as.formula(form <- paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat)
     sing <- lme4::isSingular(fit1, tol = 1e-5)
     # delete intercept-slope covariance if model was singular
     if(sing){
-      fit1 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
+      fit1 <- lme4::lmer(formula=as.formula(form <- paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
       sing <- lme4::isSingular(fit1, tol = 1e-5)
+      message <- paste("Model ", form, " is singular. Alternative model was fitted: ", form2, ". Singularity:", sing)
+
     }
 
   }
@@ -192,7 +200,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   # Get Rle based on a 10% Rel. Threshold
   icc$Rle <- icc$percent/10
 
-  # Round values
+    # Round values
   icc[-1] <- round(icc[-1], digits = digitsForRounding)
 
 
@@ -204,7 +212,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
                       "RandomCoefficients.singular" = sing,
                       "icc" = icc)
 
-
+  print(message)
   return(return.list)
 }
 
@@ -295,7 +303,7 @@ LRT.study <-function(object){
 ##' @author Stefan Thoma, adapted from Lorenz Herger
 ##' @export
 ##'
-
+object <- alb5
 relevance_table.study <- function(object,
                                         coverage_prob = .95,
                                         mem = TRUE,
@@ -346,7 +354,7 @@ relevance_table.study <- function(object,
 
   # do the mixed effects modeling effect size extraction and standardisation
   if(mem){
-    stnd.fix <- stnd.beta.glmer(object@mixedModels$Models$RandomCoefficients)[object@var.of.interest,]
+    stnd.fix <- stnd.beta.glmer(mod = object@mixedModels$Models$RandomCoefficients)[object@var.of.interest,]
     after_escalc["All", c(names(stnd.fix),
                           "n.total",
                           "Rle",
@@ -491,17 +499,28 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
   ggtable <- table %>% tibble::rownames_to_column("Location") %>%
     dplyr::mutate(Location = factor(x = Location, levels = lab),
            category = success(table, threshold = object@relevance.threshold),
-           alp = ifelse(type =="replication", .5, 1))
+           alp = ifelse(type =="replication" & !rlang::is_empty(object@data.revised), .5, 1))
 
+  # helping function from: https://stackoverflow.com/questions/45857787/adding-column-if-it-does-not-exist
+  fncols <- function(data, cname) {
+    add <-cname[!cname%in%names(data)]
+
+    if(length(add)!=0) data[add] <- NA
+    data
+  }
+# add the two columns needed (if they don't exist yet) so the plotting function does not throw an error.
+  ggtable <- fncols(ggtable, c("stpredUp", "stpredLow"))
   #setting up the basic plot
   if(is.null(cutoff)){
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold)+
+      ggplot2::geom_errorbarh(ggplot2::aes(xmin=stpredLow, xmax=stpredUp), height=.1, size = .4)+
       ggplot2::xlab(expression(theta))
   #  ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
   } else {
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
-    ggplot2::coord_cartesian(xlim =cutoff) +
-    ggplot2::xlab(expression(theta))
+     ggplot2::coord_cartesian(xlim =cutoff) +
+     ggplot2::geom_errorbarh(ggplot2::aes(xmin=stpredLow, xmax=stpredUp), height=.1, size = .4)+
+     ggplot2::xlab(expression(theta))
    # ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
   }
 
@@ -518,7 +537,7 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 ##' @author Stefan Thoma
 ##' @export
 plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", standardise = TRUE){
-#object <- alb5
+
   # Deal with the cutoff for plotting: If only one is supplied, apply it to both sides.
   if(!is.null(cutoff) & length(cutoff) == 1){cutoff <- c(-cutoff, cutoff)}
   if(rlang::is_empty(object@difference.table)){
@@ -610,9 +629,9 @@ plot.table.study <- function(ggtable, category, threshold){
 
     #sets the scales
     #note that I reverse the y axis to correctly order the effect #sizes based on my index variable
-    #  scale_x_continuous(limits=c(-2.5,1), breaks = c(-2.5:1), name=xname)+
-    ggplot2::scale_y_continuous(name = "", breaks=1:nrow(ggtable), labels = paste(ggtable$Location," (",category, ")",  sep = ""), trans="reverse")+
 
+    #ggplot2::scale_y_continuous(name = "", breaks=1:nrow(ggtable), labels = paste(ggtable$Location," (",category, ")",  sep = ""), trans="reverse")+
+    ggplot2::scale_y_continuous(name = "", breaks=1:nrow(ggtable), labels = paste(ggtable$Location,  sep = ""), trans="reverse")+
 
     #adding a vertical line at the effect = 0 mark
     ggplot2::geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5)+
@@ -965,14 +984,32 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
 ##' @return standardised effects + standardised CI based on
 ##' @author Stefan Thoma
 
-#mod <- object@mixedModels$Models$RandomCoefficients
+
 
 stnd.beta.glmer <- function(mod) {
   family <- family(mod)
 
-  #mod <- alb5$heterogen$lrt[[3]][[1]]
+  #mod <- alb5@mixedModels$Models$RandomCoefficients
   b <- lme4::fixef(mod)[-1]
-  ci <- confint(mod, parm = names(b))
+  se <- lme4:::summary.merMod(mod)$coefficients[-1, "Std. Error"]
+
+  statistic <- lme4:::summary.merMod(mod)$coefficients[-1,3]
+
+
+  # Prediction interval according to @borenstein2009
+  df <- nrow(lme4::ranef(mod)[[1]])-2
+  t <- qt(p = 0.975, df = df)
+  vcov <- as.data.frame(print(lme4::VarCorr(mod), comp = "Variance"))
+  var.b <- as.numeric(na.omit(vcov$vcov[vcov$var1==names(b)]))
+  lo.pred <- b - t* sqrt(se^2 + var.b)
+  up.pred <- b + t* sqrt(se^2 + var.b)
+
+
+  if(family$family=="binomial"){
+    ci <- confint(mod, parm = names(b), method = "Wald") # Profiling did not work for this example, at least not for all models tested.
+  } else{
+    ci <- confint(mod, parm = names(b))
+  }
   sd.x <- apply(x <- as.matrix(lme4::getME(mod,"X")[,-1]),2,sd)
   sd.y <- sd(lme4::getME(mod,"y"))
 
@@ -987,7 +1024,8 @@ stnd.beta.glmer <- function(mod) {
   } else error("function for family", family$family, "not defined")
 
 
-  data.frame("estimate" = b, "ciLow" = ci[, 1], "ciUp" = ci[, 2], "stcoef" = b*factor, "stciLow" = ci[, 1]*factor, "stciUp" = ci[, 2]*factor)
+  data.frame("estimate" = b,"se" = se, "statistic" = statistic, "ciLow" = ci[, 1], "ciUp" = ci[, 2], "stcoef" = b*factor, "stciLow" = ci[, 1]*factor, "stciUp" = ci[, 2]*factor,
+             "predUp" = up.pred, "predLow" = lo.pred, "stpredUp" = up.pred*factor, "stpredLow" = lo.pred*factor)
 }
 
 # Assigns success label to table ----------------------------------------------
@@ -1117,16 +1155,28 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
   # adjust difference table of object:
   object@difference.table[[diff.type]] <- rbind(NA, object@difference.table[[diff.type]])
 
+
+  est.ylab <- c(paste(rownames(object@table), ": Rle = ", signif(object@table$Rle, digits = digitsForRounding), "\n[", signif(object@table$Rls, digits = digitsForRounding), "; ", signif(object@table$Rlp, digits = digitsForRounding), "]", sep = ""))
+  diff.ylab <- c("", paste("Difference: ", signif(object@difference.table[[diff.type]][["stcoef"]], digits = digitsForRounding), "\n[", c(signif(object@difference.table[[diff.type]][["stciLow"]], digits = digitsForRounding)),"; ", c(signif(object@difference.table[[diff.type]][["stciUp"]], digits = digitsForRounding)), "]", sep = ""))[-2]
+
+  rownames(object@difference.table[[diff.type]]) <- diff.ylab
+  rownames(object@table) <- est.ylab
+
+
   est.plot <- plot_estimates.study(object, cutoff = cutoff.est, standardise = standardise) +
     ggplot2::theme(legend.position = "right")
-  diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
-    ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
 
+  diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
+  # ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
+    ggplot2::theme(legend.position = "none")
   (est.plot + diff.plot ) +
     patchwork::plot_layout(guides = "collect") +
     patchwork::plot_annotation(tag_levels = 'A')
 
 
 }
+
+
+
 
 

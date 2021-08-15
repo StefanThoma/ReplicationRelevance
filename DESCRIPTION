@@ -33,7 +33,8 @@ Imports:
     patchwork,
     RColorBrewer,
     ggpubr,
-    lmerTest
+    lmerTest,
+    merTools
 RoxygenNote: 7.1.1.9001
 Depends: 
     R (>= 2.10)
