@@ -79,7 +79,7 @@ scales.study <- new("study",
 
 
 scales.study@mixedModels <- MixedModels.study(scales.study)
-diagnosticPlot.study(scales.study)
+#diagnosticPlot.study(scales.study)
 ```
 
 
@@ -173,7 +173,7 @@ lobue.study <-  new("study",
 ```{r, message = FALSE, warning = FALSE}
 lobue.study@table <- relevance_table.study(lobue.study)
 
-plot_estimates.study(lobue.study) 
+#plot_estimates.study(lobue.study) 
 
 ```
 for the drop effect, we need to supply the final predictors and the comparisons predictor.

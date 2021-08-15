@@ -177,7 +177,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
     if(sing){
       fit1 <- lme4::lmer(formula=as.formula(form <- paste0(yVar," ~", base_iv, " + (1 | Location) + ( - 1 +" , xVar[1] ," | Location)")), dat)
       sing <- lme4::isSingular(fit1, tol = 1e-5)
-      message <- paste("Model ", form, " is singular. Alternative model was fitted: ", form2, ". Singularity:", sing)
+      message <- paste("Model ", form, " is singular. Alternative model was fitted: ", form, ". Singularity:", sing)
 
     }
 
@@ -303,7 +303,7 @@ LRT.study <-function(object){
 ##' @author Stefan Thoma, adapted from Lorenz Herger
 ##' @export
 ##'
-object <- alb5
+
 relevance_table.study <- function(object,
                                         coverage_prob = .95,
                                         mem = TRUE,
