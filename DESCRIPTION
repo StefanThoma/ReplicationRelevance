@@ -1,7 +1,7 @@
 Package: ReplicationRelevance
 Type: Package
 Title: Calculates Relevance for ManyLabs Replication Projects
-Version: 0.1.0
+Version: 0.1.1
 Author: Stefan P. Thoma
 Maintainer: Stefan P. Thoma <stefan.thoma@student.ethz.ch>
 Description: Package for my master thesis project.
