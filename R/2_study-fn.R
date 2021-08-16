@@ -303,7 +303,7 @@ LRT.study <-function(object){
 ##' @author Stefan Thoma, adapted from Lorenz Herger
 ##' @export
 ##'
-
+#object <- scales.study
 relevance_table.study <- function(object,
                                         coverage_prob = .95,
                                         mem = TRUE,
@@ -346,7 +346,7 @@ relevance_table.study <- function(object,
   #relevance_f.study(dat = dat[[1]], x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family)
   # Get effect sizes and variance
   after_escalc <- lapply(dat, FUN = function(x){
-    relevance_f.study(dat = x, x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family)})
+    relevance_f.study(dat = x, x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family, relevance.threshold = object@relevance.threshold)})
 
   #if(object@manyLabs=="ml5" & use.both){}
   # bind the list output from previous function together
@@ -505,7 +505,7 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
   fncols <- function(data, cname) {
     add <-cname[!cname%in%names(data)]
 
-    if(length(add)!=0) data[add] <- NA
+    if(length(add)!=0) data[add] <- as.numeric(NA)
     data
   }
 # add the two columns needed (if they don't exist yet) so the plotting function does not throw an error.
@@ -536,6 +536,7 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
 ##' @returns plot
 ##' @author Stefan Thoma
 ##' @export
+
 plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", standardise = TRUE){
 
   # Deal with the cutoff for plotting: If only one is supplied, apply it to both sides.
@@ -546,15 +547,17 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
     }
 
 
-  if(object@variables$measure=="OR"){
-    standardise <- FALSE
-  }
+ # if(object@variables$measure=="OR"){
+ #   standardise <- FALSE
+ # }
 
 
-# Extract infomration
+# Extract information
   table <- object@difference.table[[ci.type]]
+
 # Filter out unwanted rows
-  table <- table[ !(row.names(table) %in% "Original1"), ]
+  table <- table[!startsWith(rownames(table), prefix = "Original1"),]
+  table <- table[!startsWith(rownames(table), prefix = "Diff.: NA"),]
 # Get names of locations
   lab <- rownames(table)
 
@@ -584,6 +587,9 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
            category = success(table, threshold = object@relevance.threshold),
            alp = 1,
            threshold = object@relevance.threshold)
+
+
+
 
   #setting up the basic plot
   if(is.null(cutoff)){
@@ -683,7 +689,7 @@ plot.table.study <- function(ggtable, category, threshold){
 #response_var = object@variables$dv
 #treatment_var = object@variables$iv
 #dat <- dat[[1]]
-relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest, family = "gaussian"){
+relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest, family = "gaussian", relevance.threshold = .1){
 
   # remove rows with NA
   if(length(treatment_var)==1){
@@ -724,6 +730,26 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 
 
   }
+
+  unfortunate.standardisation <- function(df){
+    df <- df %>%
+      dplyr::mutate(
+        stcoef = estimate,
+        stciLow = ciLow,
+        stciUp = ciUp,
+        Rle = estimate/ relevance.threshold,
+        Rls = ciLow/ relevance.threshold,
+        Rlp = ciUp/ relevance.threshold
+      )
+    df
+  }
+
+  # Check if predictor is not numeric.
+  if(unf.std <- length(unique(dat[[treatment_var]]))<3 & family == "binomial"){
+    output <- unfortunate.standardisation(output)
+  }
+
+
   # Create formula based on input
   formula.temp <- as.formula(paste0(response_var, " ~ ", paste(treatment_var, collapse = " + "),  "| Location"))
 
@@ -751,6 +777,9 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
     output[labs, c("p.power", "r.power")] <- power.temp
   }
   # Return output vector
+  if(unf.std){
+    output <- unfortunate.standardisation(output)
+  }
   output
 }
 
@@ -885,7 +914,13 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
 ##' @param coverage_prob double.
 ##' @returns CI. numeric vector containing estimate and CI
 ##' @author Stefan Thoma
+#object <-  lobue.study
+#dat <- lobue.study@data.revised
 r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm"){
+  if(object@family!="gaussian"){
+    stop("function for family not defined.")
+  }
+
   # prepare formulas as string
   vars <- object@variables
   formula1 <- paste(vars$dv, "~", vars$iv)
@@ -896,7 +931,11 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
                        se = numeric(),
                        ciLow = numeric(),
                        ciUp = numeric(),
-                       n.total = numeric()
+                       n.total = numeric(),
+                       type = character()
+                      #Rle = numeric(),
+                      #Rls = numeric(),
+                      #Rlp = numeric()
                          )
 
 
@@ -904,25 +943,27 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
   ## first for glm
   stat.f.lm <- function(dat, i){
     dat2 <- dat[i, ]
-    m1 <- glm(as.formula(formula1), data  = dat2, family = object@family)
-    m2 <- glm(as.formula(formula2), data = dat2, family = object@family)
+    m1 <- lm(as.formula(formula1), data  = dat2)
+    m2 <- lm(as.formula(formula2), data = dat2)
     #MuMIn::r.squaredGLMM(m1, m2)[1,"R2c"]
-    attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
-
-
+    #attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
+    rsq::rsq(m1, adj = TRUE) - rsq::rsq(m2, adj = TRUE)
   }
 
   ## now for MEMo
   stat.f.MEMo <- function(dat, i){
 
     dat2 <- dat[i, ]
-    m1 <- lme4::glmer(as.formula(paste(formula1, "(1 | Location)", sep = " + ")), data  = dat2, family = object@family)
-    m2 <- lme4::glmer(as.formula(paste(formula2, "(1 | Location)", sep = " + ")), data = dat2, family = object@family)
+    m1 <- lme4::lmer(as.formula(paste(formula1, "(1 | Location)", sep = " + ")), data  = dat2)
+    m2 <- lme4::lmer(as.formula(paste(formula2, "(1 | Location)", sep = " + ")), data = dat2)
     #MuMIn::r.squaredGLMM(m1, m2)[1,"R2c"]
-    attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
+    rsq::rsq.lmm(m1, adj = TRUE)$fixed - rsq::rsq.lmm(m2, adj = TRUE)$fixed
+
+    #attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
   }
 
   # create function to calculate statistic for all labs
+  # This function calls stat.f.lm
   for.all.labs <- function(dat){
     #dat <- object@data.revised
     out.list <- by(data = dat, INDICES = dat$Location, FUN = function(x){
@@ -933,7 +974,8 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
         names(out) <- names(output)[-6]
         out
       })
-    do.call(rbind, out.list)
+    tibble::as_tibble(do.call(rbind, out.list))
+
   }
 
 
@@ -945,13 +987,19 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     # Estimate & Bootstrap CI
     MEMo_boot <- boot::boot(data = object@data.revised, statistic = stat.f.MEMo, R = 1000)
     MEMo_boot_ci <- boot::boot.ci(MEMo_boot, conf = coverage_prob, type = bootstrap.type)
-    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
-                 nrow(object@data.revised),
-                 type = "fixef.rand.coef")
-    out.rev <- cbind(round(for.all.labs(object@data.revised), digits = digitsForRounding),
-                     type = "revision")
-    out.rep <- cbind(round(for.all.labs(object@data.replication), digits = digitsForRounding),
-                     type = "replication")
+    out.all <- data.frame(rbind(c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding), nrow(object@data.revised))))
+    out.all["type"] <- "fixef.rand.coef"
+    names(out.all) <- names(output)
+
+    rwnms.rev <- unique(object@data.revised$Location)
+    out.rev <- as.data.frame(round(for.all.labs(object@data.revised), digits = digitsForRounding))
+    out.rev["type"] <- "revision"
+    rownames(out.rev) <- rwnms.rev
+
+    rwnms.rep <- unique(object@data.replication$Location)
+    out.rep <- as.data.frame(round(for.all.labs(object@data.replication), digits = digitsForRounding))
+    out.rep["type"] <- "replication"
+    rownames(out.rep) <- rwnms.rep
 
 
     output <- rbind(output, out.rev, out.rep, "All" = out.all)
@@ -960,18 +1008,29 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     # Estimate & Bootstrap CI
     MEMo_boot <- boot::boot(data = object@data.replication, statistic = stat.f.MEMo, R = 1000)
     MEMo_boot_ci <- boot::boot.ci(MEMo_boot, conf = coverage_prob, type = bootstrap.type)
+    out.all <- data.frame(rbind(c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding), nrow(object@data.replication))))
+    out.all["type"] <- "fixef.rand.coef"
+    names(out.all) <- names(output)
+
 
     # create output for each type of study
-    out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
-                 nrow(object@data.revised),
-                 type = "fixef.rand.coef")
-    out.rep <- cbind(round(for.all.labs(object@data.replication), digits = digitsForRounding),
-                     type = "replication")
+    #out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
+    #             nrow(object@data.revised),
+    #             type = "fixef.rand.coef")
+    rwnms.rep <- unique(object@data.replication$Location)
+    out.rep <- as.data.frame(round(for.all.labs(object@data.replication), digits = digitsForRounding))
+    out.rep["type"] <- "replication"
+    rownames(out.rep) <- rwnms.rep
 
     # one ring to bind them
     output <- rbind(output, out.rev, out.rep, "All" = out.all)
   }
 
+  output[c("Rle",
+          "Rls",
+          "Rlp")] <- c(output[["estimate"]]/object@relevance.threshold,
+                     (output[["ciLow"]])/object@relevance.threshold,
+                     (output[["ciUp"]])/object@relevance.threshold)
 
   return(output)
 }
@@ -1136,8 +1195,7 @@ power.f <- function(x, std.effect, threshold, family ){
 ##' @param cutoff.est is forwarded as cutoff for estimate_plot function
 ##' @param cutoff.diff is forwarded as cutoff for difference_plot function
 ##' to .95
-##'
-# @returns ggplot object
+##' @import patchwork
 ##' @author Stefan Thoma
 ##' @export
 plot_both.study <- function(object, standardise = TRUE, coverage_probability = .95, cutoff.est = NULL, cutoff.diff = NULL){
@@ -1157,7 +1215,7 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
 
 
   est.ylab <- c(paste(rownames(object@table), ": Rle = ", signif(object@table$Rle, digits = digitsForRounding), "\n[", signif(object@table$Rls, digits = digitsForRounding), "; ", signif(object@table$Rlp, digits = digitsForRounding), "]", sep = ""))
-  diff.ylab <- c("", paste("Difference: ", signif(object@difference.table[[diff.type]][["stcoef"]], digits = digitsForRounding), "\n[", c(signif(object@difference.table[[diff.type]][["stciLow"]], digits = digitsForRounding)),"; ", c(signif(object@difference.table[[diff.type]][["stciUp"]], digits = digitsForRounding)), "]", sep = ""))[-2]
+  diff.ylab <- c("", paste("Diff.: ", signif(object@difference.table[[diff.type]][["stcoef"]], digits = digitsForRounding), "\n[", c(signif(object@difference.table[[diff.type]][["stciLow"]], digits = digitsForRounding)),"; ", c(signif(object@difference.table[[diff.type]][["stciUp"]], digits = digitsForRounding)), "]", sep = ""))[-2]
 
   rownames(object@difference.table[[diff.type]]) <- diff.ylab
   rownames(object@table) <- est.ylab
@@ -1169,6 +1227,10 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
   diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
   # ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
     ggplot2::theme(legend.position = "none")
+
+
+# patchwork::wrap_plots(est.plot, diff.plot, guides = "collect")
+
   (est.plot + diff.plot ) +
     patchwork::plot_layout(guides = "collect") +
     patchwork::plot_annotation(tag_levels = 'A')

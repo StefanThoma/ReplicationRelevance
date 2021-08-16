@@ -34,7 +34,8 @@ Imports:
     RColorBrewer,
     ggpubr,
     lmerTest,
-    merTools
+    merTools,
+    rsq
 RoxygenNote: 7.1.1.9001
 Depends: 
     R (>= 2.10)

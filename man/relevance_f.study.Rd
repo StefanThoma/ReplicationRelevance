@@ -13,7 +13,8 @@ relevance_f.study(
   response_var,
   orig,
   var.of.interest,
-  family = "gaussian"
+  family = "gaussian",
+  relevance.threshold = 0.1
 )
 }
 \arguments{
