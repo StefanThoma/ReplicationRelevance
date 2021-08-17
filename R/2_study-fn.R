@@ -917,9 +917,6 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
 #object <-  lobue.study
 #dat <- lobue.study@data.revised
 r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm"){
-  if(object@family!="gaussian"){
-    stop("function for family not defined.")
-  }
 
   # prepare formulas as string
   vars <- object@variables
@@ -937,6 +934,8 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
                       #Rls = numeric(),
                       #Rlp = numeric()
                          )
+
+
 
 
   # create bootstrap functions
@@ -1026,11 +1025,21 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     output <- rbind(output, out.rev, out.rep, "All" = out.all)
   }
 
+  # add original effect size. (I should make an external function to do this...)
+  output <- output %>% tibble::add_row(data.frame(object@original), .before =  TRUE)
+  # add rowname "Original" and type "original"
+  rownames(output) <- c("Original", rownames(output)[-1])
+  output <- output %>% dplyr::mutate(
+    type = ifelse(rownames(output)=="Original", "original", type)
+  )
+
+
   output[c("Rle",
           "Rls",
           "Rlp")] <- c(output[["estimate"]]/object@relevance.threshold,
                      (output[["ciLow"]])/object@relevance.threshold,
                      (output[["ciUp"]])/object@relevance.threshold)
+
 
   return(output)
 }
