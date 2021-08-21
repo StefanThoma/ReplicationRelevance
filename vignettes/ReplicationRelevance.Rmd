@@ -79,7 +79,7 @@ scales.study <- new("study",
 
 
 scales.study@mixedModels <- MixedModels.study(scales.study)
-#diagnosticPlot.study(scales.study)
+diagnosticPlot.study(scales.study)
 ```
 
 
@@ -93,6 +93,11 @@ plot_difference.study(scales.study, cutoff = 5)
 plot_both.study(scales.study, cutoff.diff = 5, cutoff.est = 5)
 
 ```
+```{r}
+create_pub_tables.study(scales.study)
+
+```
+
 Die "Slope" Varianz ist relativ gross, erklärt 28,4% der Varianz. Can I say that? 
 Diagnostics plot does not look super nice! But not sure how it is supposed to look, so I have to check that out.
 
@@ -133,7 +138,7 @@ summary(alb5)
 
 
 alb5@mixedModels <- MixedModels.study(alb5)
-#diagnosticPlot.study(alb5)
+diagnosticPlot.study(alb5)
 alb5@table <- relevance_table.study(alb5)
 
 
@@ -143,6 +148,9 @@ plot_estimates.study(alb5)
 plot_difference.study(alb5, ci.type = "newcombe")
 plot_difference.study(alb5, ci.type = "wald")
 plot_both.study(alb5)
+
+
+create_pub_tables.study(alb5)
 
 
 ```
@@ -181,5 +189,8 @@ Then we compare the R^2 of the models.
 
 I used bootstrapped normal CI around the bias corrected R^2 estimate, while I plotted the observed R^2.
 Hence, the CI does not look symmetrical around the observed R^2. 
+```{r}
+create_pub_tables.study(lobue.study)
 
-Obviously, the original effect is still missing. Needs to be added ASAP!
+```
+

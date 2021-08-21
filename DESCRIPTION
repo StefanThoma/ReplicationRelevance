@@ -1,6 +1,6 @@
 Package: ReplicationRelevance
 Type: Package
-Title: Calculates Relevance for ManyLabs Replication Projects
+Title: Calculates Relevance for Many Labs Replication Projects
 Version: 0.1.1
 Author: Stefan P. Thoma
 Maintainer: Stefan P. Thoma <stefan.thoma@student.ethz.ch>
@@ -36,7 +36,9 @@ Imports:
     lmerTest,
     merTools,
     rsq,
-    Rdpack
+    Rdpack,
+    performance,
+    xtable
 RoxygenNote: 7.1.1.9001
 Depends: 
     R (>= 2.10)

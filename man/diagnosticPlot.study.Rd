@@ -2,20 +2,24 @@
 % Please edit documentation in R/2_study-fn.R
 \name{diagnosticPlot.study}
 \alias{diagnosticPlot.study}
-\title{Diagnostic Plot for "winning model" as defined by the likelihood ratio test.}
+\title{Wrapper function for performance::check_model().
+ Used to be a custom funciton, but the check_model function just seems so much better.
+ Why reinvent the wheel?}
 \usage{
-diagnosticPlot.study(object, percent = 1)
+diagnosticPlot.study(object, ...)
 }
 \arguments{
 \item{object}{study object}
 
-\item{percent}{used to avoid overplotting in Tukey-Anscombe plot.}
+\item{...}{forwarded to performance::check_model()}
 }
 \value{
-Tukey-Anscombe plot, Q-Q plot for RE and residuals' Q-Q plot.
+output of performance::check_model()
 }
 \description{
-Diagnostic Plot for "winning model" as defined by the likelihood ratio test.
+Wrapper function for performance::check_model().
+ Used to be a custom funciton, but the check_model function just seems so much better.
+ Why reinvent the wheel?
 }
 \author{
 Stefan Thoma, adapted from Federico Rogai

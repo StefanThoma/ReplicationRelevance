@@ -415,35 +415,25 @@ relevance_table.study <- function(object,
 
 
 # Plot diagnostics ----------------------------------
-##'  Diagnostic Plot for "winning model" as defined by the likelihood ratio test.
+##'  Wrapper function for performance::check_model().
+##'  Used to be a custom funciton, but the check_model function just seems so much better.
+##'  Why reinvent the wheel?
 ##' @param object study object
-##' @param percent used to avoid overplotting in Tukey-Anscombe plot.
-##' @return Tukey-Anscombe plot, Q-Q plot for RE and residuals' Q-Q plot.
+##' @param ... forwarded to performance::check_model()
+##' @return output of performance::check_model()
 ##' @author Stefan Thoma, adapted from Federico Rogai
 ##' @export
-diagnosticPlot.study<-function(object, percent = 1){
+diagnosticPlot.study<-function(object, ...){
 
-  if(!{percent> 0 & percent<=1}) stop("percentage has to be between 0 and 1")
   if(rlang::is_empty(object@mixedModels)){
     warning("the object does not contain mixed models. The function mixedModels.study is called and results are used")
     object@mixedModels <- MixedModels.study(object)
   }
+
   model<-object@mixedModels$Models$RandomCoefficients
-  y_name<-names(model@frame)[[1]]
-  x_name<-names(model@frame)[[2]]
-  show_less_points<-sample(length(resid(model)),floor(percent * length(resid(model)))) # Possible to show less points if
-  # one wants to "see more"
-  # Fitted values vs residuals
-  plot(resid(model)[show_less_points]~fitted(model)[show_less_points], xlab=x_name, ylab=y_name, main= "Tukey Anscombe Plot" )
-  lines(loess.smooth(fitted(model)[show_less_points],resid(model)[show_less_points] , family="gaussian"), col="blue")
-  # Q-Q plot of random effects
-  try(print(lattice::qqmath(lme4::ranef(model))))
+  performance::check_model(model, ...)
 
-  ## Q-Q plot of residuals
-  qqnorm(resid(model)[show_less_points])
 }
-
-
 
 
 ##  plotting function ------------------------------------------------------------
@@ -618,7 +608,7 @@ plot.table.study <- function(ggtable, category, threshold){
 
   ## define colors for all possible success possibilities:
   cls <- RColorBrewer::brewer.pal(6, "Set1")
-  sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl" =  cls[4], "Ctr" =  cls[5])
+  sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl.Sig" = cls[4], "Ngl" =  cls[5], "Ctr" =  cls[6])
 
   #as.numeric(ggtable$stciLow)<as.numeric(ggtable$stcoef)
   ggplot2::ggplot(data=ggtable, ggplot2::aes(y=as.numeric(Location), x=stcoef, xmin=stciLow, xmax=stciUp, col = category))+
@@ -854,6 +844,7 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
     CI <-data.frame("estimate" = difference, "ciLow" = lower, "ciUp" = upper)
 
 
+
     return(CI)
   }
 
@@ -889,6 +880,11 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
   # standardise
   diff.wald.table[c("stcoef", "stciLow", "stciUp")] <- diff.wald.table[c("estimate", "ciLow", "ciUp")]/standardise.factors
   diff.newcombe.table[c("stcoef", "stciLow", "stciUp")] <- diff.newcombe.table[c("estimate", "ciLow", "ciUp")]/standardise.factors
+
+
+  # add relevance measures:
+  diff.wald.table[c("Rle", "Rls", "Rlp")]<- diff.wald.table[c("stcoef", "stciLow", "stciUp")] / object@relevance.threshold
+  diff.newcombe.table[c("Rle", "Rls", "Rlp")]<- diff.newcombe.table[c("stcoef", "stciLow", "stciUp")] / object@relevance.threshold
 
   return(list("wald" = diff.wald.table, "newcombe" = diff.newcombe.table))
 }
@@ -1036,9 +1032,15 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
 
   output[c("Rle",
           "Rls",
-          "Rlp")] <- c(output[["estimate"]]/object@relevance.threshold,
+          "Rlp",
+          "stcoef",
+          "stciLow",
+          "stciUp")] <- c(output[["estimate"]]/object@relevance.threshold,
                      (output[["ciLow"]])/object@relevance.threshold,
-                     (output[["ciUp"]])/object@relevance.threshold)
+                     (output[["ciUp"]])/object@relevance.threshold,
+                     output[["estimate"]],
+                     output[["ciLow"]],
+                     output[["ciUp"]])
 
 
   return(output)
@@ -1106,6 +1108,8 @@ stnd.beta.glmer <- function(mod) {
 ##' @returns vector indicating whether repl. has been successful or not.
 ##' @author Stefan Thoma
 ##'
+##'
+
 success <- function(table, threshold = NULL){
 
   if(is.null(threshold)){
@@ -1113,13 +1117,15 @@ success <- function(table, threshold = NULL){
     vec <- with(table, ifelse(Rls>1, "Rlv",
                               ifelse(stciLow>0 & Rlp>1, "Amb.Sig",
                                      ifelse(stciLow<0 & Rlp>1, "Amb",
-                                            ifelse(stciLow<0 & Rlp<1, "Ngl",
-                                                   ifelse(stciUp<0, "Ctr", NA)
+                                            ifelse(stciLow>0 & Rlp<1, "Ngl.Sig",
+                                                   ifelse(stciLow<0 & dplyr::between(Rlp, 0, 1), "Ngl",
+                                                          ifelse(stciUp<0, "Ctr", NA)
+                                                          )
+                                                   )
                                             )
                                      )
                               )
-    )
-    )
+                )
 
   } else{
 
@@ -1130,11 +1136,14 @@ success <- function(table, threshold = NULL){
     vec <- ifelse(lo>threshold, "Rlv",
                   ifelse(lo>0 & hi>threshold, "Amb.Sig",
                          ifelse(lo<0 & hi>threshold, "Amb",
-                                ifelse(lo<0 & hi<threshold, "Ngl",
-                                       ifelse(hi<0, "Ctr", NA)
+                                ifelse(lo>0 & hi<threshold, "Ngl.Sig",
+                                       ifelse(lo<0 & dplyr::between(hi, 0, threshold), "Ngl",
+                                              ifelse(hi<0, "Ctr", NA)
+                                       )
                                 )
                          )
                   )
+
     )
   }
 
@@ -1248,6 +1257,84 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
 }
 
 
+#' creates latex table for publication.
+#'
+#' The resulting table may still need to be adjusted, but serves as a sceleton.
+#'
+#' @param object a study object
+#' @param type which type of difference table should be returned.
+#'             defaults to "wald"
+#' @param path where table should be saved.
+#'
+#' @return last called table in latex format. It does save BOTH tables (if available) to path.
+#' @export
+#'
 
+create_pub_tables.study <- function(object, type = "wald", path = NULL){
+  # check if slot table is empty.
+  check_slot.study(object, slot = "table")
+
+  #extract information
+  est.table <- object@table
+
+  # create file name
+  file.est <- paste(path, object@name, "_est.txt", sep = "")
+
+  if(both <- !rlang::is_empty(object@difference.table)){
+    diff.table  <- object@difference.table[[type]]
+    # file name for diff table:
+    file.diff <- paste(path, object@name, "_diff.txt", sep = "")
+  } else{print("diff table not supplied")}
+
+
+  # delete me!
+  table <- est.table
+
+
+
+  # function creating each table
+  prepare <- function(table, file){
+    table$category <- success(table)
+    if(!(identical(table$estimate, table$stcoef ))){
+      vars <- c("Location", "Est.", "Std.Est.", "Rle")
+    } else{
+      vars <- c("Location", "Est.", "Rle")
+    }
+    if("p.power" %in% names(table)){ #check if table is diff table or est table
+      vars <- c("type", vars, "n.total", "p.power", "r.power")
+    }
+
+
+    table <- table %>%
+      tibble::rownames_to_column(var = "Location") %>%
+      #dplyr::select(vars) %>%
+      dplyr::filter(Location != "Original1") %>%
+      dplyr::mutate_if(is.numeric, round,  digits = digitsForRounding) %>%
+      dplyr::mutate("Est." = paste(estimate, " [", ciLow, "; ", ciUp, "]", sep = ""),
+                    "Std.Est." = paste(stcoef, " [", stciLow, ";", stciUp, "]", sep = ""),
+                    "Rle" = paste(Rle, " [", Rls, "; ", Rlp, "]", sep = "")) %>%
+      dplyr::select(vars)
+
+
+    # where should extra lines be drawn?
+
+    extra.lines <-ifelse("type" %in% names(table),
+      c(sapply(unique(table$type), function(x){min(which(table$type==x))}) -1, nrow(table)),
+      c(0, nrow(table)))
+
+      xt <- xtable::xtable(table, digits = digitsForRounding)
+      xtable::print.xtable(xt, include.rownames = FALSE, booktabs = TRUE, hline.after = extra.lines, type = "latex", file = file)
+      }
+
+# apply function to estimate table
+prepare(est.table, file = file.est)
+
+
+if(both){
+  #apply function to diff table
+  prepare(diff.table, file = file.diff)
+  }
+
+}
 
 
