@@ -123,7 +123,7 @@ setMethod("summary", signature = "study", summary.study)
 ##' with an interaction between treatment and (random) university effect.
 ##' @author Stefan Thoma, adapted from Federico Rogai
 ##' @export
-
+#object <- scales.study
 MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   if(!isClass(object, Class = "study")){
     stop("input object is not of class study")
@@ -134,7 +134,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   xVar<-object@variables$iv
   base_iv <- paste(xVar, collapse = " + ")
 
-  if(object@manyLabs=="ml5"){
+  if(!rlang::is_empty(object@data.revised)){
     dat <- object@data.revised
   } else{dat <- object@data.replication}
 
@@ -187,6 +187,17 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   # get intraclass correlation (icc)
   icc.names <- c(names(lme4::ranef(fit1, condVar = TRUE)$Location))
   icc <- as.data.frame(specr::icc_specs(fit1))
+
+  # for binomial regression, ICC has to be recalculated.
+  if(tolower(methodFamily)=="binomial"){
+    vcov.sum = sum(abs(icc["vcov"]))
+    icc <- icc %>%
+      tibble::add_row(grp = "resid", vcov = (pi^2/3)) %>%
+      dplyr::mutate(
+      icc = abs(vcov / (vcov.sum + (pi^2/3))),
+      percent = 100*icc)
+
+  }
 
   # Name the grp variable a bit nicer
   # Works for most cases I think
@@ -346,9 +357,9 @@ relevance_table.study <- function(object,
   #relevance_f.study(dat = dat[[1]], x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family)
   # Get effect sizes and variance
   after_escalc <- lapply(dat, FUN = function(x){
-    relevance_f.study(dat = x, x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family, relevance.threshold = object@relevance.threshold)})
+    relevance_f.study(dat = x, x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family, relevance.threshold = object@relevance.threshold, object@variables)})
 
-  #if(object@manyLabs=="ml5" & use.both){}
+
   # bind the list output from previous function together
   after_escalc <- do.call("rbind", after_escalc)
 
@@ -679,7 +690,7 @@ plot.table.study <- function(ggtable, category, threshold){
 #response_var = object@variables$dv
 #treatment_var = object@variables$iv
 #dat <- dat[[1]]
-relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest, family = "gaussian", relevance.threshold = .1){
+relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest, family = "gaussian", relevance.threshold = .1, variables){
 
   # remove rows with NA
   if(length(treatment_var)==1){
@@ -755,10 +766,17 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 
   if(!is.null(orig)){
     # Calculate power for each lab given the estimated effect size of the original study and the x vector of the replication study
-    power.temp <- t(sapply(labs, FUN =
+    # If coefs are supplied seperately, these are used.
+    if("coefs" %in% names(variables)){
+      power.temp <- t(sapply(labs, FUN =
+                               function(l) power.f(x = as.vector(subset(dat, subset = Location == l)[[treatment_var]]),
+                                                   std.effect = variables$coefs, threshold = .1, family = family)))
+    } else{
+      power.temp <- t(sapply(labs, FUN =
                              function(l) power.f(x = as.vector(subset(dat, subset = Location == l)[[treatment_var]]),
                                                  std.effect = output$stcoef[1], threshold = .1, family = family)))
   }
+    }
 
   # Bind power-results and results to the output dfs
 
@@ -851,8 +869,8 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
 
   ## standardise
   standardise.ed <- function(lab){
-#    print(lab)
-#lab <- replications[1,]
+
+
     if(standardise & object@variables$measure== "SMD"){
       sd.original <- original$estimate/original$stcoef
       sd.lab <- lab["estimate"]/lab["stcoef"]
@@ -1163,11 +1181,15 @@ success <- function(table, threshold = NULL){
 #rel.table <- try(scale@table)
 #
 #x <- rep(c(0,1), each = 40)
-#std.effect <- .3
+#std.effect <- object@variables$coefs
 power.f <- function(x, std.effect, threshold, family ){
 
   if(family=="binomial"){
-    z <- std.effect*x
+    if(length(std.effect)==2){
+      z <- std.effect[1] + std.effect[2]*x
+    } else{
+      z <-  std.effect*x
+    }
     p <- 1/(1+exp(-z))
   }
 

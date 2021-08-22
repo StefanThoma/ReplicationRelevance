@@ -4,7 +4,8 @@
 \name{lobue}
 \alias{lobue}
 \title{Replication protocol dataframe of replication project ML5
-Study: LoBue}
+Study: LoBue
+Full code book can be found here: https://osf.io/68f7m/}
 \format{
 A data frame with 473 rows and 7 variables:
 \describe{
@@ -28,5 +29,6 @@ lobue
 \description{
 Replication protocol dataframe of replication project ML5
 Study: LoBue
+Full code book can be found here: https://osf.io/68f7m/
 }
 \keyword{datasets}
