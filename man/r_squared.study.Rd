@@ -2,8 +2,9 @@
 % Please edit documentation in R/2_study-fn.R
 \name{r_squared.study}
 \alias{r_squared.study}
-\title{We want to get the conditional R^2 with confidence interval separately for each
-lab but also for the MEMo.}
+\title{We want to get the adj. R^2 with bootstrap confidence interval separately for each
+lab but also for the MEMo.
+We use the package rsq}
 \usage{
 r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "norm")
 }
@@ -11,19 +12,16 @@ r_squared.study(object, coverage_prob = 0.95, bootstrap.type = "norm")
 \item{object}{Study object.}
 
 \item{coverage_prob}{double.}
+
+\item{bootstrap.type}{forwarded to the boot.ci function}
 }
 \value{
 CI. numeric vector containing estimate and CI
 }
 \description{
-Conditional R^2 refers to:
-Conditional R_GLMM² is interpreted as a variance explained by the entire model,
-including both fixed and random effects,
-and is calculated according to the equation:
-R_GLMM(c)² = (σ_f² + σ_α²) / (σ_f² + σ_α² + σ_ε²)
-}
-\details{
-This is opposed to the marginal r^2, see MuMIn package.
+We want to get the adj. R^2 with bootstrap confidence interval separately for each
+lab but also for the MEMo.
+We use the package rsq
 }
 \author{
 Stefan Thoma

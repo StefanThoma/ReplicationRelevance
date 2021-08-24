@@ -3,7 +3,7 @@
 \name{summary.study}
 \alias{summary.study}
 \title{summary.study, function to summarise the data frames of the study objects.
-result depends on the measure OR or SMD defined in the study object.}
+At the moment, this funcion only works for the schwarz (scales) and the alb5 study.}
 \usage{
 summary.study(object)
 }
@@ -11,11 +11,11 @@ summary.study(object)
 \item{object}{Object of class study}
 }
 \value{
-some summary measures of the data, mainly about the data
+summary measures about the data, depending on the measure specified.
 }
 \description{
 summary.study, function to summarise the data frames of the study objects.
-result depends on the measure OR or SMD defined in the study object.
+At the moment, this funcion only works for the schwarz (scales) and the alb5 study.
 }
 \author{
 Stefan Thoma

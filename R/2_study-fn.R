@@ -2,18 +2,11 @@
 ###    Study Class Functions    ###-
 ###################################-
 
-# define test study object:
-#try(object <- alb5)
-#
-##object <- try(sunk)
-#try(object <- payne)
-#try(object <- scales)
-#
-
 
 
 # Is slot empty? ------------------------
 ##' Function throws error if specified slot is empty
+##' This function is used in some other functions.
 ##' @param object Object of class study
 ##' @param slot Name of slot to check.
 ##' @return no return value.
@@ -28,30 +21,37 @@ check_slot.study <- Vectorize(check_slot.study, vectorize.args = "slot", SIMPLIF
 
 # Function which summarises the data of a study object. ------------------------
 ##' summary.study, function to summarise the data frames of the study objects.
-##' result depends on the measure OR or SMD defined in the study object.
+##' At the moment, this funcion only works for the schwarz (scales) and the alb5 study.
+##'
 ##' @param object Object of class study
-##' @return some summary measures of the data, mainly about the data
+##' @return summary measures about the data, depending on the measure specified.
 ##' @author Stefan Thoma
 ##' @export
 
 summary.study <- function(object){
 
-
+# Check if object is of class study.
   if(!isClass(object, Class = "study")){
     stop("input object is not of class study")
   }
+
+
   if(object@family == "binomial"){
-  # get one function from web
+  # get one function from web for summarising categorical data (used for OR effect)
   source("http://pcwww.liv.ac.uk/~william/R/crosstab.r")
   }
 
+
+  # extract information
   dv <- object@variables$dv
   iv <- object@variables$iv
+
+  # prepare return list
   return.list <- list()
 
-  # general function
+  # define summary function
+  # for gaussian family (SMD):
   if(object@family=="gaussian"){
-
     sum.f <- function(df){
       df %>% dplyr::group_by(Location) %>%
         dplyr::summarise("N" = length(unique(ResponseId)),
@@ -59,6 +59,7 @@ summary.study <- function(object){
                   dv_sd =  sd(get(dv), na.rm = TRUE)) %>%
         dplyr::ungroup()
     }
+    # now for binomial family (OR)
   } else if(object@family == "binomial"){
     # define the summary function for the binomial case
     sum.f <- function(df){
@@ -71,17 +72,24 @@ summary.study <- function(object){
     } else{stop("family is not specified as either binomial or gaussian")}
 
 
-
+ # create return list based on whether study came from ML5 or ML1.
+ # There is only one df of interest in ml1, but two in ml5 (revised and replication protocol)
   if(object@manyLabs == "ml5"){
-    if(object@family == "binomial"){
-      return(list("revised" = sum.f(df1), "replication" = sum.f(df2)))
-    }
     # extract first both data frames
     df1 <- object@data.revised
     df2 <- object@data.replication
+
+
+    if(object@family == "binomial"){
+      return(list("revised" = sum.f(df1), "replication" = sum.f(df2)))
+    }
+
+    # create summary tables for each df individually:
     summ.temp1 <- sum.f(df1)
     summ.temp2 <- sum.f(df2)
 
+
+    # bind them together nicely:
     cols.temp <- colnames(summ.temp1)
     summ.temp1["type"] <- "revised"
     summ.temp2["type"] <- "replication"
@@ -91,14 +99,17 @@ summary.study <- function(object){
 
     return.list[["summary"]] <- summ
   }
+  # now the same for ML1:
   if(object@manyLabs == "ml1"){
     df2 <- object@data.replication
     if(object@family == "binomial"){
       return(sum.f(df2))
     }
 
+    # create summary table:
     summ.temp2 <- sum.f(df2)
 
+    # format it nicely
     cols.temp <- colnames(summ.temp2)
     summ.temp2["type"] <- "replication"
     summ <- rbind(summ.temp2)
@@ -112,37 +123,46 @@ summary.study <- function(object){
 
 }
 
-# Set method
+
+# Set method. This is not really neccessary.
 setMethod("summary", signature = "study", summary.study)
 
 
 
 # MixedModels.study --------------------------------------------------------------------------------
-##'  Function which fits two mixed models and a fixed effect model and returns objects containing them.
-##' @param object takes an object of class study as input
+##'  Function which fits different mixed models, compares them and finally defines a random
+##'  coefficients model which, if neccessary, is reduced in random effects to minimize
+##'  model singularity.
+##'  This function also computes and returns model ICC, a measure of heterogeneity.
+##' @param object of class study.
 ##' @param methodFamily which family does the error distribution belong to?
 ##' not required, can be used to overwrite the default defined in the object.
+##' Defaults to NULL.
 ##' @param transformation name of the transformation that should be applied to the response (e.g. log).
-##' @return list with three objects of fitted models. The first is the "empty model", i.e. a model without random effects
-##' but still with the fixed treatment effect. The second is the model with the random interaction. The third is the model
-##' with an interaction between treatment and (random) university effect.
+##' defaults to NULL.
+##' @return return.list contains three fitted models, the information whether the random coef. model is singular, and the ICC table.
 ##' @author Stefan Thoma, adapted from Federico Rogai
 ##' @export
-#object <- scales.study
+
 MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   if(!isClass(object, Class = "study")){
     stop("input object is not of class study")
   }
 
-  # Get name of x and y variables
+  # Extract information from study object.
   yVar<-object@variables$dv
   xVar<-object@variables$iv
+  # define base-independent variables for the model
   base_iv <- paste(xVar, collapse = " + ")
 
+  # define dat based on whether revised protocol data is available.
   if(!rlang::is_empty(object@data.revised)){
     dat <- object@data.revised
   } else{dat <- object@data.replication}
 
+
+  # check if methodFamily has been specified in model call.
+  # If not, use the one defined in the study object.
 
   if(is.null(methodFamily)){
     methodFamily <- object@family
@@ -154,10 +174,15 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
     dat[, yVar]<-FUN(dat[,yVar])
   }
 
-
+  # prepare message and singularity variables
   message <- ""
   sing <- FALSE
 
+
+  # In general we fit three models: fit.empty contains no random effects.
+  # fit0 contains random intercept.
+  # fit1 originally contains random coefficients (and intercept - slope covariance)
+  # for OR:
   if(tolower(methodFamily)!="gaussian"){
     fit.empty<-glm(formula=as.formula(paste0(yVar," ~", base_iv)), dat, family=methodFamily, na.action = na.omit)
     fit0 <- lme4::glmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1|Location)")), dat, family=methodFamily)
@@ -173,7 +198,8 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
         message <- paste("model ", form, " is singular. Alternative model was fitted: ", form2)
       }
     }
-  } else{
+
+  } else{ # Now the same for linear model.
     fit.empty<-aov(formula=as.formula(paste0(yVar," ~", paste(base_iv, collapse = " + "))), dat, na.action=na.omit)
     fit0 <- lme4::lmer(formula=as.formula(paste0(yVar," ~", base_iv, "+ (1|Location)")), dat)
     fit1 <- lme4::lmer(formula=as.formula(form <- paste0(yVar," ~", base_iv, "+ (1+", xVar[1] ,"|Location)")), dat)
@@ -193,7 +219,7 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
   icc.names <- c(names(lme4::ranef(fit1, condVar = TRUE)$Location))
   icc <- as.data.frame(specr::icc_specs(fit1))
 
-  # for binomial regression, ICC has to be recalculated.
+  # for binomial regression, ICC has to be recalculated with specified resid.variance.
   if(tolower(methodFamily)=="binomial"){
     vcov.sum = sum(abs(icc["vcov"]))
     icc <- icc %>%
@@ -235,7 +261,8 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
 
 
 #   LRT.study ------------------------------------------------------------
-
+##'  This function is deprecated.
+##'
 ##'  Function computes a likelihood ratio test (LRT) between the model with and without random intercept. If the p-value for this test is
 ##'  smaller than 0.05, we compute the LRT between the model with the random slope and the one without this term (but with the
 ##'  random intercept). If the larger model delivers a superior fit to the data, we print the summary of that model. Otherwise we
@@ -251,7 +278,6 @@ MixedModels.study <-function(object, methodFamily=NULL, transformation=NULL){
 ##' The fourth returned argument is the summary of the chosen model
 ##' The fifth element are the confidence interval of the winning model
 ##' @author Stefan Thoma, adapted from Federico Rogai
-##' @export
 
 
 LRT.study <-function(object){
@@ -304,13 +330,14 @@ LRT.study <-function(object){
 
 #  relevance_table.study ------------------------------------------------------------
 ##'  creates a table with the effectsizes of all locations for a specific
-##'  research question. In addition, the function calculates one-sided CIs for
-##'  the effect found by each university. Whether the effect size for a specific
-##'  question is calculated as the standardized mean difference or as the odds
-##'  ratio is determined in the argument "vars_for_question"
+##'  research question and one-sided CIs for
+##'  the effect found by each university and the prediction interval of the overall effect.
+##'  If the measure is either OR or SMD, it calls the function relevance_f.study to do most
+##'  of the heavy lifting.
+##'  If measure is drop, the function r_squared.study is called and its output returned.
 ##'
 ##' @param object study object
-##' @param coverage_probability Double. Coverage probability of the CIs. Defaults
+##' @param coverage_probab Double. Coverage probability of the CIs. Defaults
 ##' to .95
 ##' @param mem boolean, whether fixed effect from mixed effects model should be included
 ##' @param use.both  boolean, should both data frames be used?
@@ -332,7 +359,7 @@ relevance_table.study <- function(object,
   }
 
 
-
+# see if original effect is defined in study object.
   if(rlang::is_empty(object@original)){
     original <- NULL
   } else(original <- object@original)
@@ -358,8 +385,6 @@ relevance_table.study <- function(object,
     dat <- list(object@data.replication)
   }
 
-
-  #relevance_f.study(dat = dat[[1]], x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family)
   # Get effect sizes and variance
   after_escalc <- lapply(dat, FUN = function(x){
     relevance_f.study(dat = x, x_var, y_var, orig =  original, var.of.interest = object@var.of.interest, family = object@family, relevance.threshold = object@relevance.threshold, object@variables)})
@@ -384,7 +409,7 @@ relevance_table.study <- function(object,
 
 
 
-  #
+  # format table:
   after_escalc["type"] <- NA
   if(object@manyLabs=="ml5" & use.both){
 
@@ -407,24 +432,15 @@ relevance_table.study <- function(object,
   }
 
 
-
   after_escalc["type"] <- ifelse(rownames(after_escalc)=="Original", "original",
                                  ifelse(rownames(after_escalc)=="All", "fixef.rand.coef",
                                         after_escalc$type))
+
   # Add resulting data.frame to the output list
   after_escalc <- as.data.frame(after_escalc)
   return(after_escalc)
 
   }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -437,10 +453,12 @@ relevance_table.study <- function(object,
 ##' @param object study object
 ##' @param ... forwarded to performance::check_model()
 ##' @return output of performance::check_model()
-##' @author Stefan Thoma, adapted from Federico Rogai
+##' @author Stefan Thoma
 ##' @export
-diagnosticPlot.study<-function(object, ...){
+diagnosticPlot.study <- function(object, ...){
 
+
+ # Is slot mixedModels empty?
   if(rlang::is_empty(object@mixedModels)){
     warning("the object does not contain mixed models. The function mixedModels.study is called and results are used")
     object@mixedModels <- MixedModels.study(object)
@@ -452,17 +470,12 @@ diagnosticPlot.study<-function(object, ...){
 }
 
 
-##  plotting function ------------------------------------------------------------
-##' This function plots the relevance_overview_tables
+##  plot_estimates.study function ------------------------------------------------------------
+##' This function plots the table created by the function relevance_table.study
 ##' @param object a study object
-##' @param coverage_probability Double. Coverage probability of the CIs. Defaults
-##' to .95
-##'
-##'
-##' TODO: change measure
-##'
-# @returns after_esclalc data.frame. Contains the university-level effect sizes
-# and CIs for one research question.
+##' @param cutoff values used to crop the plot. Can be either one value or two.
+##' @param standardise should standardised values be plotted?
+##' @return ggplot of relevance table
 ##' @author Stefan Thoma
 ##' @export
 
@@ -476,15 +489,11 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
     standardise <- FALSE
   }
 
-
+  # extract information
+  xname <- object@name
   table <- object@table
-
   table <- table[!is.na(table$type), ]
-
   lab <- rownames(table)
-# effects <- as.vector(table[, "stcoef"])
-# lower_bounds <- as.vector(table[, "stciLow"])
-# upper_bounds <- as.vector(table[, "stciUp"])
 
 
   # if we want non-standardised effect sizes, we just replace the standardised ones.
@@ -497,11 +506,9 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
   }
 
   # Get category of effects
-
   category <- success(table, threshold = object@relevance.threshold)
 
-  xname <- object@name
-
+  # crate table that is forwarded to the plot.table.study function
   ggtable <- table %>% tibble::rownames_to_column("Location") %>%
     dplyr::mutate(Location = factor(x = Location, levels = lab),
            category = success(table, threshold = object@relevance.threshold),
@@ -516,30 +523,32 @@ plot_estimates.study <- function(object, cutoff = NULL, standardise = TRUE){
   }
 # add the two columns needed (if they don't exist yet) so the plotting function does not throw an error.
   ggtable <- fncols(ggtable, c("stpredUp", "stpredLow"))
+
   #setting up the basic plot
   if(is.null(cutoff)){
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold)+
       ggplot2::geom_errorbarh(ggplot2::aes(xmin=stpredLow, xmax=stpredUp), height=.1, size = .4)+
       ggplot2::xlab(expression(theta))
-  #  ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
   } else {
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
      ggplot2::coord_cartesian(xlim =cutoff) +
      ggplot2::geom_errorbarh(ggplot2::aes(xmin=stpredLow, xmax=stpredUp), height=.1, size = .4)+
      ggplot2::xlab(expression(theta))
-   # ggtitle(paste("Target Effects for study ", xname, " of project ", object@manyLabs, sep = ""))
+
   }
 
 }
 
+
 #  difference of estimates plotting function ------------------------------------------------------------
 ##' This function plots the difference table as a forest plot
-##' Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2
+##' It calls the function plot.table.study
+##'
 ##' @param object a study object
-##' @param coverage_probability Coverage probability of the CIs. Defaults
+##' @param cutoff should plot be cropped?
 ##' @param ci.type either "wald" or "newcombe"
-##' to .95
-##' @returns plot
+##' defaults to "wald".
+##' @returns ggplot
 ##' @author Stefan Thoma
 ##' @export
 
@@ -553,13 +562,10 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
     }
 
 
- # if(object@variables$measure=="OR"){
- #   standardise <- FALSE
- # }
-
 
 # Extract information
   table <- object@difference.table[[ci.type]]
+  xname <- object@name
 
 # Filter out unwanted rows
   table <- table[!startsWith(rownames(table), prefix = "Original1"),]
@@ -584,10 +590,7 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
 
 
 
-  ## With ggplot (adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2)
-
-  xname <- object@name
-
+  # create table to forward to plotting function
   ggtable <- table %>% tibble::rownames_to_column("Location") %>%
     dplyr::mutate(Location = factor(x = Location, levels = lab),
            category = success(table, threshold = object@relevance.threshold),
@@ -601,24 +604,24 @@ plot_difference.study <- function(object, cutoff = NULL, ci.type = "wald", stand
   if(is.null(cutoff)){
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
     ggplot2::geom_vline(xintercept = -object@relevance.threshold, alpha = .3, col = "red") +
-    # ggtitle(paste("Effect differences of study ", xname, " of project ", object@manyLabs, sep = "")) +
     ggplot2::xlab(expression(Delta))
   } else {
     plot.table.study(ggtable, category = category, threshold = object@relevance.threshold) +
     ggplot2::coord_cartesian(xlim =cutoff) +
     ggplot2::geom_vline(xintercept = -object@relevance.threshold, alpha = .3, col = "red")+
     ggplot2::xlab(expression(Delta))
-     # ggtitle(paste("Effect differences of study ", xname, " of project ", object@manyLabs, sep = ""))
   }
 
 }
 
 # plot ggtable  ---------------------------------------------------
 ##' Function used to plot estimates and differences in estimates
+##' Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2
 ##' @param ggtable either from difference or estimate table
 ##' @param category the categorisation of the results for color choice
+##' @param threshold relevance threshold to be plotted.
 ##' @return plot of studies
-##' @author Stefan Thoma, adapted from Federico Rogai
+##' @author Stefan Thoma
 
 plot.table.study <- function(ggtable, category, threshold){
 
@@ -626,7 +629,6 @@ plot.table.study <- function(ggtable, category, threshold){
   cls <- RColorBrewer::brewer.pal(6, "Set1")
   sccs <- c( "Rlv" =  cls[1],  "Amb.Sig" =  cls[2],  "Amb" =  cls[3], "Ngl.Sig" = cls[4], "Ngl" =  cls[5], "Ctr" =  cls[6])
 
-  #as.numeric(ggtable$stciLow)<as.numeric(ggtable$stcoef)
   ggplot2::ggplot(data=ggtable, ggplot2::aes(y=as.numeric(Location), x=stcoef, xmin=stciLow, xmax=stciUp, col = category))+
 
     #this adds the effect sizes to the plot
@@ -642,16 +644,12 @@ plot.table.study <- function(ggtable, category, threshold){
     #sets the scales
     #note that I reverse the y axis to correctly order the effect #sizes based on my index variable
 
-    #ggplot2::scale_y_continuous(name = "", breaks=1:nrow(ggtable), labels = paste(ggtable$Location," (",category, ")",  sep = ""), trans="reverse")+
     ggplot2::scale_y_continuous(name = "", breaks=1:nrow(ggtable), labels = paste(ggtable$Location,  sep = ""), trans="reverse")+
 
     #adding a vertical line at the effect = 0 mark
     ggplot2::geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5)+
     #adding a vertical line at relevance threshold
     ggplot2::geom_vline(xintercept = threshold, alpha = .3, col = "red") +
-
-    #faceting based on my subgroups
-    #facet_grid(type~., space="free")+
 
     #thematic stuff
 
@@ -667,35 +665,26 @@ plot.table.study <- function(ggtable, category, threshold){
 # create relevance table ---------------------------------------------------
 ##' Creates a table showing the standardized mean difference obtained by
 ##' each of the 36 universities that tried to replicate a specific study.
-##' This is an alternative function to escalc_inputs_smd and is based on the
-##' relevance package by Stahel. The function is called by the relevance_table.study function
-##'
+##' This function relies on the relevance package by Stahel.
+##' The function is called by the relevance_table.study function
 ##'
 ##' @param dat data.frame containing the full data from the manyLabs experiments
 ##' @param treatment_var Name of the column in dat that contains the treatment
 ##' assignments.
 ##' @param response_var Name of the column in dat that contains the response.
 ##' @param orig Statistic of original study
+##' @param family distribution family
+##' @param relevance.threshold is the threshold specified
+##' @param variables this is the slot variables forwarded from the calling function
+##' This is needed if we would like to compute power based on intercept and effect of the binomial regression,
+##' not only on the effect. At the moment this variable is not used.
 ##' @return output data.frame with one row for each of the 36 replication attempts.
 ##' Each row of output contains the sample sizes and means for both treatment groups
-##' as well as the the standardized mean difference.
+##' as well as the the effect estimate and power estimate.
 ##' @author  Stefan Thoma
 
-
-#dat <- alb5@data.revised
-#treatment_var <- alb5@variables$iv
-#response_var <- alb5@variables$dv
-#var.of.interest <- treatment_var
-#orig <- alb5@original
-##relevance_smd.study(dat, treatment_var = x_var, response_var = y_var, orig =  object@original, var.of.interest = object@var.of.interest, family = object@family)
-#
-#var.of.interest = object@var.of.interest
-#family = object@family
-#orig =  object@original
-#response_var = object@variables$dv
-#treatment_var = object@variables$iv
-#dat <- dat[[1]]
-relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest, family = "gaussian", relevance.threshold = .1, variables){
+relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.interest,
+                              family = "gaussian", relevance.threshold = .1, variables){
 
   # remove rows with NA
   if(length(treatment_var)==1){
@@ -711,11 +700,8 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 
   if(!is.null(orig)){
 
-
+  # deal with different input formats of the orig vector
     if(length(orig)==6){
-
-
-      #orig <-   list(m.1 = 12.83, m.2 = 10.78, sd.1 = 1.86, sd.2 = 3.15, n.1 = 18, n.2 = 18)
 
       # Get effect sizes of original study
       orig.est <- summary(metafor::escalc(measure="MD", m1i=orig$m.1, sd1i=orig$sd.1, n1i=orig$n.1, m2i=orig$m.2, sd2i=orig$sd.2, n2i=orig$n.2))
@@ -736,6 +722,9 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 
 
   }
+# in the version of relevance used, the relevance package standardises
+# coefficients of logistic regression also if predictor is categorical.
+# This is a post-hoc fix for that.
 
   unfortunate.standardisation <- function(df){
     df <- df %>%
@@ -802,7 +791,6 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 
 
 # create difference table ------------------------------------------------------
-##' WIP
 ##' Calculates two difference tables with two distinct methods to calculate CI.
 ##' wald: Uses pooled SD to create normal CI
 ##' newcombe: Uses newcombe method to create CI
@@ -812,8 +800,9 @@ relevance_f.study <- function(dat, treatment_var, response_var, orig, var.of.int
 ##' lower and upper boundaries of a confidence interval for this difference.
 ##' @author Stefan Thoma, adapted from Lorenz Herger
 ##' @export
-#object <- scales
+
 effect_differences.study <- function(object, coverage_prob = .95, standardise = NULL) {
+
   # check if original study effect or table is supplied.
   check_slot.study(object, c("original", "table"))
 
@@ -833,11 +822,10 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
   quantile <- 1 - (1 - coverage_prob) / 2
   replications <- table[-1,]
 
-  # function to calculate pooled sd
+  # function to calculate pooled sd for standardisation
   pool.sd <- function(n, s){
     sqrt(
       {sum({n-1}*{s^2})} / {sum(n)-length(n)}
-
     )
   }
 
@@ -888,6 +876,7 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
   return(pooled.sd)
   }
 
+  # apply the standardise.ed function to all replications
   standardise.factors <- apply(replications[,!names(replications) %in% "type"], 1, FUN = standardise.ed, simplify = TRUE)
 
 
@@ -914,27 +903,18 @@ effect_differences.study <- function(object, coverage_prob = .95, standardise = 
 
 
 
-
-
 # get CI for R^2 ------------------------------------------------------
-##' We want to get the conditional R^2 with confidence interval separately for each
+##' We want to get the adj. R^2 with bootstrap confidence interval separately for each
 ##' lab but also for the MEMo.
-##'
-##' Conditional R^2 refers to:
-##' Conditional R_GLMM² is interpreted as a variance explained by the entire model,
-##' including both fixed and random effects,
-##' and is calculated according to the equation:
-##' R_GLMM(c)² = (σ_f² + σ_α²) / (σ_f² + σ_α² + σ_ε²)
-##'
-##' This is opposed to the marginal r^2, see MuMIn package.
+##' We use the package rsq
 ##'
 ##'
 ##' @param object Study object.
 ##' @param coverage_prob double.
+##' @param bootstrap.type forwarded to the boot.ci function
 ##' @returns CI. numeric vector containing estimate and CI
 ##' @author Stefan Thoma
-#object <-  lobue.study
-#dat <- lobue.study@data.revised
+
 r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm"){
 
   # prepare formulas as string
@@ -963,8 +943,7 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     dat2 <- dat[i, ]
     m1 <- lm(as.formula(formula1), data  = dat2)
     m2 <- lm(as.formula(formula2), data = dat2)
-    #MuMIn::r.squaredGLMM(m1, m2)[1,"R2c"]
-    #attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
+
     rsq::rsq(m1, adj = TRUE) - rsq::rsq(m2, adj = TRUE)
   }
 
@@ -974,10 +953,8 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     dat2 <- dat[i, ]
     m1 <- lme4::lmer(as.formula(paste(formula1, "(1 | Location)", sep = " + ")), data  = dat2)
     m2 <- lme4::lmer(as.formula(paste(formula2, "(1 | Location)", sep = " + ")), data = dat2)
-    #MuMIn::r.squaredGLMM(m1, m2)[1,"R2c"]
-    rsq::rsq.lmm(m1, adj = TRUE)$fixed - rsq::rsq.lmm(m2, adj = TRUE)$fixed
 
-    #attr(MuMIn::r.squaredLR(m2, m1), "adj.r.squared")
+    rsq::rsq.lmm(m1, adj = TRUE)$fixed - rsq::rsq.lmm(m2, adj = TRUE)$fixed
   }
 
   # create function to calculate statistic for all labs
@@ -993,7 +970,6 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
         out
       })
     tibble::as_tibble(do.call(rbind, out.list))
-
   }
 
 
@@ -1009,21 +985,24 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
     out.all["type"] <- "fixef.rand.coef"
     names(out.all) <- names(output)
 
+    # format and round values for revised protocol
     rwnms.rev <- unique(object@data.revised$Location)
     out.rev <- as.data.frame(round(for.all.labs(object@data.revised), digits = digitsForRounding))
     out.rev["type"] <- "revision"
     rownames(out.rev) <- rwnms.rev
 
+    # format and round values for replication protocol
     rwnms.rep <- unique(object@data.replication$Location)
     out.rep <- as.data.frame(round(for.all.labs(object@data.replication), digits = digitsForRounding))
     out.rep["type"] <- "replication"
     rownames(out.rep) <- rwnms.rep
 
 
+    # bind output
     output <- rbind(output, out.rev, out.rep, "All" = out.all)
   } else if(object@manyLabs == "ml1"){
-    # MEmo
-    # Estimate & Bootstrap CI
+
+    # calculate Estimate & Bootstrap CI
     MEMo_boot <- boot::boot(data = object@data.replication, statistic = stat.f.MEMo, R = 1000)
     MEMo_boot_ci <- boot::boot.ci(MEMo_boot, conf = coverage_prob, type = bootstrap.type)
     out.all <- data.frame(rbind(c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding), nrow(object@data.replication))))
@@ -1032,9 +1011,8 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
 
 
     # create output for each type of study
-    #out.all <- c(round(c(MEMo_boot_ci$t0, sd(MEMo_boot$t), tail(c(MEMo_boot_ci[[4]]), 2)), digits = digitsForRounding),
-    #             nrow(object@data.revised),
-    #             type = "fixef.rand.coef")
+
+    # format
     rwnms.rep <- unique(object@data.replication$Location)
     out.rep <- as.data.frame(round(for.all.labs(object@data.replication), digits = digitsForRounding))
     out.rep["type"] <- "replication"
@@ -1053,6 +1031,9 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
   )
 
 
+
+
+  # compute Relevance and fill std.effects to keep output compatible with other functions.
   output[c("Rle",
           "Rls",
           "Rlp",
@@ -1072,17 +1053,17 @@ r_squared.study <- function(object,  coverage_prob = .95, bootstrap.type = "norm
 
 # Standardise Effects of glmer-model -------------------------------------------
 ##' Standardise Effects of glmer-model
-##' This function is used by the create_overview_table function from replication-fn.R
+##' This function is used by the relevance_table.study function
 ##' @param mod any glmer model (probabyl RandomCoefficients Model)
-##' @return standardised effects + standardised CI based on
+##' @return standardised effects + standardised CIs
 ##' @author Stefan Thoma
 
-
-
 stnd.beta.glmer <- function(mod) {
+
+
   family <- family(mod)
 
-  #mod <- alb5@mixedModels$Models$RandomCoefficients
+  # extract model information
   b <- lme4::fixef(mod)[-1]
   se <- lme4:::summary.merMod(mod)$coefficients[-1, "Std. Error"]
 
@@ -1098,14 +1079,19 @@ stnd.beta.glmer <- function(mod) {
   up.pred <- b + t* sqrt(se^2 + var.b)
 
 
+  # compute CI
   if(family$family=="binomial"){
     ci <- confint(mod, parm = names(b), method = "Wald") # Profiling did not work for this example, at least not for all models tested.
   } else{
     ci <- confint(mod, parm = names(b))
   }
+
+  # compute sd's for standardisation
   sd.x <- apply(x <- as.matrix(lme4::getME(mod,"X")[,-1]),2,sd)
   sd.y <- sd(lme4::getME(mod,"y"))
 
+
+  # standardise effects depending on situation
   if(family$family=="binomial"){
     if(length(unique(x))>2){
       factor <- sd.x#/1.6683
@@ -1116,7 +1102,7 @@ stnd.beta.glmer <- function(mod) {
     } else {factor <- 1/sd(resid(mod))}
   } else error("function for family", family$family, "not defined")
 
-
+# bind results
   data.frame("estimate" = b,"se" = se, "statistic" = statistic, "ciLow" = ci[, 1], "ciUp" = ci[, 2], "stcoef" = b*factor, "stciLow" = ci[, 1]*factor, "stciUp" = ci[, 2]*factor,
              "predUp" = up.pred, "predLow" = lo.pred, "stpredUp" = up.pred*factor, "stpredLow" = lo.pred*factor)
 }
@@ -1124,14 +1110,11 @@ stnd.beta.glmer <- function(mod) {
 # Assigns success label to table ----------------------------------------------
 ##' This function takes as input the output of relevance_overview_tables
 ##' It creates a new column that indicates whether a replication has been successful or not.
-##'
 ##' @param table list containing the full data and other infos from the manyLabs experiment
 ##' to .95
 ##' @param threshold relevance threshold. Needed if Rlp & Rls are not in table.
 ##' @returns vector indicating whether repl. has been successful or not.
 ##' @author Stefan Thoma
-##'
-##'
 
 success <- function(table, threshold = NULL){
 
@@ -1177,16 +1160,14 @@ success <- function(table, threshold = NULL){
 
 # Power function --------------------------------------
 ##' Calculates Power given a relvance table object.
-##' @param dat.list list containing the full data and other infos from the manyLabs experiment
-##' @param coverage_probability Double. Coverage probability of the CIs. Defaults
-##' to .95
-# @returns power estimate based on simulation
+##' @param x predictor values. either vector or matrxi.
+##' not sure if matrix works for all cases.
+##' @param std.effect is the standardised effect. Only binom regression allows for intercept
+##' @param threshold relevance threshold
+##' @param family either gaussian or binomial
+##' @returns power estimate based on 1000 simulation
 ##' @author Stefan Thoma
 
-#rel.table <- try(scale@table)
-#
-#x <- rep(c(0,1), each = 40)
-#std.effect <- object@variables$coefs
 power.f <- function(x, std.effect, threshold, family ){
 
   if(family=="binomial"){
@@ -1211,7 +1192,7 @@ power.f <- function(x, std.effect, threshold, family ){
     y <- yf()
     cl <- confint(profile(glm(y~x, family = family)), parm = "x")[1] # call profile first, so there is no message.
     return(c(cl > 0, cl > threshold))
-    #    return(coef(glm(y~x, family = family))) This line to get parameter estimates
+
   }
 
   res <- (do.call("rbind", replicate(sim(), n = 1000, simplify = FALSE)))
@@ -1220,14 +1201,7 @@ power.f <- function(x, std.effect, threshold, family ){
   return(power)
 
 }
-#
-#l <- labs[1]
-#power.f(x = as.vector(subset(dat, subset = Location == l)[[treatment_var]]),
-#        std.effect = output$stcoef[1], threshold = .1, family = family)
-#t(sapply(labs, FUN =
-#           function(l) power.f(x = as.vector(subset(dat, subset = Location == l)[[treatment_var]]),
-#                               std.effect = output$stcoef[1], threshold = .1, family = family)))
-#
+
 
 
 
@@ -1235,7 +1209,7 @@ power.f <- function(x, std.effect, threshold, family ){
 ##  plot both ------------------------------------------------------------
 ##' This function plots the relevance_overview_table and the difference table
 ##' @param object a study object
-##' @param standardize should plot be based on standardized values.
+##' @param standardise should plot be based on standardized values.
 ##' @param coverage_probability Double. Coverage probability of the CIs. Defaults
 ##' @param cutoff.est is forwarded as cutoff for estimate_plot function
 ##' @param cutoff.diff is forwarded as cutoff for difference_plot function
@@ -1251,7 +1225,7 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
   if(measure=="SMD"){
     diff.type <- "wald"
   } else if(measure == "OR"){
-    diff.type <- "newcombe"
+    diff.type <- "wald" # used to be newcombe
   } else{stop("function not defined for such measure not defined")}
 
 
@@ -1270,11 +1244,8 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
     ggplot2::theme(legend.position = "right")
 
   diff.plot <- plot_difference.study(object, ci.type = diff.type, cutoff = cutoff.diff, standardise = standardise) +
-  # ggplot2::theme(legend.position = "right", axis.text.y = ggplot2::element_blank())
     ggplot2::theme(legend.position = "none")
 
-
-# patchwork::wrap_plots(est.plot, diff.plot, guides = "collect")
 
   (est.plot + diff.plot ) +
     patchwork::plot_layout(guides = "collect") +
@@ -1290,12 +1261,11 @@ plot_both.study <- function(object, standardise = TRUE, coverage_probability = .
 #'
 #' @param object a study object
 #' @param type which type of difference table should be returned.
-#'             defaults to "wald"
+#' defaults to "wald"
 #' @param path where table should be saved.
-#'
 #' @return last called table in latex format. It does save BOTH tables (if available) to path.
 #' @export
-#'
+
 
 create_pub_tables.study <- function(object, type = "wald", path = NULL){
   # check if slot table is empty.
@@ -1313,9 +1283,6 @@ create_pub_tables.study <- function(object, type = "wald", path = NULL){
     file.diff <- paste(path, object@name, "_diff.txt", sep = "")
   } else{print("diff table not supplied")}
 
-
-  # delete me!
-  table <- est.table
 
 
 

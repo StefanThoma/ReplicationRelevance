@@ -3,7 +3,7 @@
 \name{plot_difference.study}
 \alias{plot_difference.study}
 \title{This function plots the difference table as a forest plot
-Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2}
+It calls the function plot.table.study}
 \usage{
 plot_difference.study(
   object,
@@ -15,17 +15,17 @@ plot_difference.study(
 \arguments{
 \item{object}{a study object}
 
-\item{ci.type}{either "wald" or "newcombe"
-to .95}
+\item{cutoff}{should plot be cropped?}
 
-\item{coverage_probability}{Coverage probability of the CIs. Defaults}
+\item{ci.type}{either "wald" or "newcombe"
+defaults to "wald".}
 }
 \value{
-plot
+ggplot
 }
 \description{
 This function plots the difference table as a forest plot
-Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2
+It calls the function plot.table.study
 }
 \author{
 Stefan Thoma

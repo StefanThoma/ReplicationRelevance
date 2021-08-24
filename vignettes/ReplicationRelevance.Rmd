@@ -28,12 +28,6 @@ devtools::load_all()
 In this document I will present the Analysis for the Master Thesis Project step by step. 
 The data has already been cleaned and prepared for analysis.
 
-## Global parameters
-```{r}
-#digitsForRounding <- 3
-```
-This could be solved a bit more elegantly.
-
 
 # Analysis
 

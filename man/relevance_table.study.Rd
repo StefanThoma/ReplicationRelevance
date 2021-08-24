@@ -3,10 +3,11 @@
 \name{relevance_table.study}
 \alias{relevance_table.study}
 \title{creates a table with the effectsizes of all locations for a specific
- research question. In addition, the function calculates one-sided CIs for
- the effect found by each university. Whether the effect size for a specific
- question is calculated as the standardized mean difference or as the odds
- ratio is determined in the argument "vars_for_question"}
+ research question and one-sided CIs for
+ the effect found by each university and the prediction interval of the overall effect.
+ If the measure is either OR or SMD, it calls the function relevance_f.study to do most
+ of the heavy lifting.
+ If measure is drop, the function r_squared.study is called and its output returned.}
 \usage{
 relevance_table.study(
   object,
@@ -22,7 +23,7 @@ relevance_table.study(
 
 \item{use.both}{boolean, should both data frames be used?}
 
-\item{coverage_probability}{Double. Coverage probability of the CIs. Defaults
+\item{coverage_probab}{Double. Coverage probability of the CIs. Defaults
 to .95}
 }
 \value{
@@ -31,10 +32,11 @@ and CIs for one research question.
 }
 \description{
 creates a table with the effectsizes of all locations for a specific
- research question. In addition, the function calculates one-sided CIs for
- the effect found by each university. Whether the effect size for a specific
- question is calculated as the standardized mean difference or as the odds
- ratio is determined in the argument "vars_for_question"
+ research question and one-sided CIs for
+ the effect found by each university and the prediction interval of the overall effect.
+ If the measure is either OR or SMD, it calls the function relevance_f.study to do most
+ of the heavy lifting.
+ If measure is drop, the function r_squared.study is called and its output returned.
 }
 \author{
 Stefan Thoma, adapted from Lorenz Herger

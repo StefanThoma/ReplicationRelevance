@@ -7,10 +7,17 @@
 power.f(x, std.effect, threshold, family)
 }
 \arguments{
-\item{dat.list}{list containing the full data and other infos from the manyLabs experiment}
+\item{x}{predictor values. either vector or matrxi.
+not sure if matrix works for all cases.}
 
-\item{coverage_probability}{Double. Coverage probability of the CIs. Defaults
-to .95}
+\item{std.effect}{is the standardised effect. Only binom regression allows for intercept}
+
+\item{threshold}{relevance threshold}
+
+\item{family}{either gaussian or binomial}
+}
+\value{
+power estimate based on 1000 simulation
 }
 \description{
 Calculates Power given a relvance table object.

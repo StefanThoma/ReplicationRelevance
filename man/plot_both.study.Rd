@@ -15,14 +15,14 @@ plot_both.study(
 \arguments{
 \item{object}{a study object}
 
+\item{standardise}{should plot be based on standardized values.}
+
 \item{coverage_probability}{Double. Coverage probability of the CIs. Defaults}
 
 \item{cutoff.est}{is forwarded as cutoff for estimate_plot function}
 
 \item{cutoff.diff}{is forwarded as cutoff for difference_plot function
 to .95}
-
-\item{standardize}{should plot be based on standardized values.}
 }
 \description{
 This function plots the relevance_overview_table and the difference table

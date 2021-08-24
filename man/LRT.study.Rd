@@ -2,12 +2,7 @@
 % Please edit documentation in R/2_study-fn.R
 \name{LRT.study}
 \alias{LRT.study}
-\title{Function computes a likelihood ratio test (LRT) between the model with and without random intercept. If the p-value for this test is
- smaller than 0.05, we compute the LRT between the model with the random slope and the one without this term (but with the
- random intercept). If the larger model delivers a superior fit to the data, we print the summary of that model. Otherwise we
- report the summary of the model we had chosen before.
- Note: to compute the LRT we need to have the ML estimate. anova() automatically refits the models,
- whose parameters were estimated using REML}
+\title{This function is deprecated.}
 \usage{
 LRT.study(object)
 }

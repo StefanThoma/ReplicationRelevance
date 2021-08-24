@@ -4,8 +4,8 @@
 \alias{relevance_f.study}
 \title{Creates a table showing the standardized mean difference obtained by
 each of the 36 universities that tried to replicate a specific study.
-This is an alternative function to escalc_inputs_smd and is based on the
-relevance package by Stahel. The function is called by the relevance_table.study function}
+This function relies on the relevance package by Stahel.
+The function is called by the relevance_table.study function}
 \usage{
 relevance_f.study(
   dat,
@@ -27,17 +27,25 @@ assignments.}
 \item{response_var}{Name of the column in dat that contains the response.}
 
 \item{orig}{Statistic of original study}
+
+\item{family}{distribution family}
+
+\item{relevance.threshold}{is the threshold specified}
+
+\item{variables}{this is the slot variables forwarded from the calling function
+This is needed if we would like to compute power based on intercept and effect of the binomial regression,
+not only on the effect. At the moment this variable is not used.}
 }
 \value{
 output data.frame with one row for each of the 36 replication attempts.
 Each row of output contains the sample sizes and means for both treatment groups
-as well as the the standardized mean difference.
+as well as the the effect estimate and power estimate.
 }
 \description{
 Creates a table showing the standardized mean difference obtained by
 each of the 36 universities that tried to replicate a specific study.
-This is an alternative function to escalc_inputs_smd and is based on the
-relevance package by Stahel. The function is called by the relevance_table.study function
+This function relies on the relevance package by Stahel.
+The function is called by the relevance_table.study function
 }
 \author{
 Stefan Thoma

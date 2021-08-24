@@ -21,7 +21,7 @@ An S4 class to represent a many-labs replication study.
 
 \item{\code{original}}{Parameter of the original study. Best to use output of relevance::inference function and numer ob observations}
 
-\item{\code{variables}}{X, Y, and type of Measure (OR, SMD or Drop1)}
+\item{\code{variables}}{X, Y, and type of Measure (OR, SMD or Drop)}
 
 \item{\code{var.of.interest}}{Depends on the Measure. Usually just one predictorn.}
 

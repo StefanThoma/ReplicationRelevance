@@ -2,7 +2,8 @@
 % Please edit documentation in R/2_study-fn.R
 \name{check_slot.study}
 \alias{check_slot.study}
-\title{Function throws error if specified slot is empty}
+\title{Function throws error if specified slot is empty
+This function is used in some other functions.}
 \usage{
 check_slot.study(object, slot)
 }
@@ -16,6 +17,7 @@ no return value.
 }
 \description{
 Function throws error if specified slot is empty
+This function is used in some other functions.
 }
 \author{
 Stefan Thoma

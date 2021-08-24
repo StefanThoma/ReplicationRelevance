@@ -3,7 +3,7 @@
 \name{stnd.beta.glmer}
 \alias{stnd.beta.glmer}
 \title{Standardise Effects of glmer-model
-This function is used by the create_overview_table function from replication-fn.R}
+This function is used by the relevance_table.study function}
 \usage{
 stnd.beta.glmer(mod)
 }
@@ -11,11 +11,11 @@ stnd.beta.glmer(mod)
 \item{mod}{any glmer model (probabyl RandomCoefficients Model)}
 }
 \value{
-standardised effects + standardised CI based on
+standardised effects + standardised CIs
 }
 \description{
 Standardise Effects of glmer-model
-This function is used by the create_overview_table function from replication-fn.R
+This function is used by the relevance_table.study function
 }
 \author{
 Stefan Thoma

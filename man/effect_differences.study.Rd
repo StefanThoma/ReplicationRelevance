@@ -2,8 +2,7 @@
 % Please edit documentation in R/2_study-fn.R
 \name{effect_differences.study}
 \alias{effect_differences.study}
-\title{WIP
-Calculates two difference tables with two distinct methods to calculate CI.
+\title{Calculates two difference tables with two distinct methods to calculate CI.
 wald: Uses pooled SD to create normal CI
 newcombe: Uses newcombe method to create CI}
 \usage{
@@ -19,7 +18,6 @@ CI. numeric vector containing the difference in effect sizes and the
 lower and upper boundaries of a confidence interval for this difference.
 }
 \description{
-WIP
 Calculates two difference tables with two distinct methods to calculate CI.
 wald: Uses pooled SD to create normal CI
 newcombe: Uses newcombe method to create CI

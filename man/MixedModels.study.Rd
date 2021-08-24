@@ -2,25 +2,31 @@
 % Please edit documentation in R/2_study-fn.R
 \name{MixedModels.study}
 \alias{MixedModels.study}
-\title{Function which fits two mixed models and a fixed effect model and returns objects containing them.}
+\title{Function which fits different mixed models, compares them and finally defines a random
+ coefficients model which, if neccessary, is reduced in random effects to minimize
+ model singularity.
+ This function also computes and returns model ICC, a measure of heterogeneity.}
 \usage{
 MixedModels.study(object, methodFamily = NULL, transformation = NULL)
 }
 \arguments{
-\item{object}{takes an object of class study as input}
+\item{object}{of class study.}
 
 \item{methodFamily}{which family does the error distribution belong to?
-not required, can be used to overwrite the default defined in the object.}
+not required, can be used to overwrite the default defined in the object.
+Defaults to NULL.}
 
-\item{transformation}{name of the transformation that should be applied to the response (e.g. log).}
+\item{transformation}{name of the transformation that should be applied to the response (e.g. log).
+defaults to NULL.}
 }
 \value{
-list with three objects of fitted models. The first is the "empty model", i.e. a model without random effects
-but still with the fixed treatment effect. The second is the model with the random interaction. The third is the model
-with an interaction between treatment and (random) university effect.
+return.list contains three fitted models, the information whether the random coef. model is singular, and the ICC table.
 }
 \description{
-Function which fits two mixed models and a fixed effect model and returns objects containing them.
+Function which fits different mixed models, compares them and finally defines a random
+ coefficients model which, if neccessary, is reduced in random effects to minimize
+ model singularity.
+ This function also computes and returns model ICC, a measure of heterogeneity.
 }
 \author{
 Stefan Thoma, adapted from Federico Rogai

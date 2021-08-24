@@ -2,21 +2,22 @@
 % Please edit documentation in R/2_study-fn.R
 \name{plot_estimates.study}
 \alias{plot_estimates.study}
-\title{This function plots the relevance_overview_tables}
+\title{This function plots the table created by the function relevance_table.study}
 \usage{
 plot_estimates.study(object, cutoff = NULL, standardise = TRUE)
 }
 \arguments{
 \item{object}{a study object}
 
-\item{coverage_probability}{Double. Coverage probability of the CIs. Defaults
-to .95
+\item{cutoff}{values used to crop the plot. Can be either one value or two.}
 
-
-TODO: change measure}
+\item{standardise}{should standardised values be plotted?}
+}
+\value{
+ggplot of relevance table
 }
 \description{
-This function plots the relevance_overview_tables
+This function plots the table created by the function relevance_table.study
 }
 \author{
 Stefan Thoma

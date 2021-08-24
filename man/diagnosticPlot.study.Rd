@@ -22,5 +22,5 @@ Wrapper function for performance::check_model().
  Why reinvent the wheel?
 }
 \author{
-Stefan Thoma, adapted from Federico Rogai
+Stefan Thoma
 }

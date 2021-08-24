@@ -2,7 +2,8 @@
 % Please edit documentation in R/2_study-fn.R
 \name{plot.table.study}
 \alias{plot.table.study}
-\title{Function used to plot estimates and differences in estimates}
+\title{Function used to plot estimates and differences in estimates
+Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2}
 \usage{
 \method{plot}{table.study}(ggtable, category, threshold)
 }
@@ -10,13 +11,16 @@
 \item{ggtable}{either from difference or estimate table}
 
 \item{category}{the categorisation of the results for color choice}
+
+\item{threshold}{relevance threshold to be plotted.}
 }
 \value{
 plot of studies
 }
 \description{
 Function used to plot estimates and differences in estimates
+Adapted from https://www.selfmindsociety.com/post/a-forest-plot-in-ggplot2
 }
 \author{
-Stefan Thoma, adapted from Federico Rogai
+Stefan Thoma
 }
