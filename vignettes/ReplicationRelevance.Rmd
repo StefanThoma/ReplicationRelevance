@@ -30,7 +30,7 @@ The data has already been cleaned and prepared for analysis.
 
 ## Global parameters
 ```{r}
-digitsForRounding <- 3
+#digitsForRounding <- 3
 ```
 This could be solved a bit more elegantly.
 
@@ -71,22 +71,36 @@ scales.study <- new("study",
                          "n.total" = nobs(scales.original.glm)), # summary of the original study
             variables = list(dv = "scales",
                              iv = "scalesgroup",
-                             measure = "OR", # certain information to build the models
-                             coefs = coef(scales.original.glm)), # for the binom regression to calculate power the intercept is needed as well. 
+                             measure = "OR" # certain information to build the models
+                             ), 
             var.of.interest = "scalesgroup", # variable of interest
             relevance.threshold = .1, # study specific effect size threshold
             family = "binomial" # distribution family of the model
             )
+```
 
-#object <- scales.study
+We can summarise the data:
+```{r, include = TRUE}
+summary(scales.study)
+```
+
+Uh it looks like some categories are heavily under-represented. Not good. 
+
+
+Lets fit the MEMo and look at the diagnostics plot.
+```{r, include = TRUE}
 scales.study@mixedModels <- MixedModels.study(scales.study)
 diagnosticPlot.study(scales.study)
 ```
 
-
-```{r, include = TRUE}
-scales.study@table <- relevance_table.study(scales.study, mem = TRUE)
+Ok lets calculate some logits adn plot them and their difference to the original logit.
+```{r, include = TRUE, warning = FALSE}
+scales.study@table <- relevance_table.study(scales.study)
 scales.study@difference.table <- effect_differences.study(scales.study)
+```
+
+
+```{r, include = TRUE, warning = FALSE}
 plot_estimates.study(scales.study, cutoff = 5)
 
 plot_difference.study(scales.study, cutoff = 5)
@@ -94,6 +108,7 @@ plot_difference.study(scales.study, cutoff = 5)
 plot_both.study(scales.study, cutoff.diff = 5, cutoff.est = 5)
 
 ```
+
 ```{r}
 create_pub_tables.study(scales.study)
 ```

@@ -9,8 +9,7 @@
 #try(object <- payne)
 #try(object <- scales)
 #
-# get one function from web
-source("http://pcwww.liv.ac.uk/~william/R/crosstab.r")
+
 
 
 # Is slot empty? ------------------------
@@ -36,8 +35,14 @@ check_slot.study <- Vectorize(check_slot.study, vectorize.args = "slot", SIMPLIF
 ##' @export
 
 summary.study <- function(object){
+
+
   if(!isClass(object, Class = "study")){
     stop("input object is not of class study")
+  }
+  if(object@family == "binomial"){
+  # get one function from web
+  source("http://pcwww.liv.ac.uk/~william/R/crosstab.r")
   }
 
   dv <- object@variables$dv
@@ -87,11 +92,11 @@ summary.study <- function(object){
     return.list[["summary"]] <- summ
   }
   if(object@manyLabs == "ml1"){
+    df2 <- object@data.replication
     if(object@family == "binomial"){
       return(sum.f(df2))
     }
 
-    df2 <- object@data.replication
     summ.temp2 <- sum.f(df2)
 
     cols.temp <- colnames(summ.temp2)

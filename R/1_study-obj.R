@@ -1,3 +1,6 @@
+#' Define the constant which will be used to round digits.
+digitsForRounding <- 3
+
 # study -------------------------------
 #' An S4 class to represent a many-labs replication study.
 #'
