@@ -21,4 +21,8 @@ You can install the development version from
 devtools::install_github("StefanThoma/ReplicationRelevance")
 ```
 
-For an example see [the main vignette](doc/ReplicationRelevance.html)
+For an example call the vignette at:
+
+``` r
+vignette("ReplicationRelevance", package = "ReplicationRelevance")
+```
