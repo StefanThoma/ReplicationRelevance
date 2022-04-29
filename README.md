@@ -11,6 +11,9 @@ master thesis. As such, it is not written in a very generalizable way.
 However, it does build a skeleton upon which a useful package could be
 built.
 
+The masters thesis is titled "Estimating Relevance within Replication Studies", the abstract can be found here: 
+https://math.ethz.ch/sfs/research/master-theses.html#2021
+
 ## Installation
 
 You can install the development version from
