@@ -8,3 +8,6 @@ inst/doc
 .DS_Store
 /doc/
 /Meta/
+ReplicationRelevance.Rcheck/
+ReplicationRelevance*.tar.gz
+ReplicationRelevance*.tgz

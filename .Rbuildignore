@@ -4,3 +4,6 @@
 ^README\.Rmd$
 ^doc$
 ^Meta$
+^ReplicationRelevance\.Rcheck$
+^ReplicationRelevance.*\.tar\.gz$
+^ReplicationRelevance.*\.tgz$

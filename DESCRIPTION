@@ -38,7 +38,10 @@ Imports:
     rsq,
     Rdpack,
     performance,
-    xtable
-RoxygenNote: 7.1.1.9001
+    xtable,
+    relevance (== 1.2),
+    metafor,
+    see
+RoxygenNote: 7.2.3
 Depends: 
     R (>= 2.10)

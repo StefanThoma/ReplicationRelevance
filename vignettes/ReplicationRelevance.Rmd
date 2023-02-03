@@ -18,11 +18,11 @@ knitr::opts_chunk$set(
 ```
 # Setup
 ```{r setup}
-pacman::p_load(relevance)
+#pacman::p_load(relevance)
 #library(ReplicationRelevance)
 #devtools::document()
 devtools::load_all()
- 
+library(relevance) 
 ```
 
 In this document I will present the Analysis for the Master Thesis Project step by step. 
@@ -142,8 +142,6 @@ summary(alb5)
 ```
 
 ```{r}
-
-
 alb5@mixedModels <- MixedModels.study(alb5)
 diagnosticPlot.study(alb5)
 alb5@table <- relevance_table.study(alb5)
@@ -190,7 +188,6 @@ lobue.study <-  new("study",
 lobue.study@table <- relevance_table.study(lobue.study)
 
 plot_estimates.study(lobue.study) 
-
 ```
 for the drop effect, we need to supply the final predictors and the comparisons predictor.
 Then we compare the R^2 of the models. 
