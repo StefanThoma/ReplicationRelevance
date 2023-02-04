@@ -84,7 +84,7 @@ Uh it looks like some categories are heavily under-represented. Not good.
 Lets fit the MEMo and look at the diagnostics plot.
 ```{r, include = TRUE}
 scales.study@mixedModels <- MixedModels.study(scales.study)
-diagnosticPlot.study(scales.study)
+#diagnosticPlot.study(scales.study)
 ```
 
 Ok lets calculate some logits adn plot them and their difference to the original logit.
@@ -143,7 +143,7 @@ summary(alb5)
 
 ```{r}
 alb5@mixedModels <- MixedModels.study(alb5)
-diagnosticPlot.study(alb5)
+#diagnosticPlot.study(alb5)
 alb5@table <- relevance_table.study(alb5)
 
 
